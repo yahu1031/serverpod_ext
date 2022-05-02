@@ -1,25 +1,28 @@
-import * as vscode from 'vscode';
+import { commands, Disposable, ExtensionContext, window } from 'vscode';
 import { Serverpod } from './base/classes/serverpod.class';
 import { Constants } from './utils/constants.util';
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export async function activate(context: ExtensionContext): Promise<void> {
 	try {
 		const _serverpod: Serverpod = Serverpod.getInstance(context);
 		_serverpod.init();
 
 		console.log('Congratulations, your extension \'serverpod\' is now active!');
 
-		const disposable: vscode.Disposable = vscode.commands.registerCommand('serverpod.create', async () => {
-			const option = await vscode.window.showQuickPick(Constants.quickPicks, { matchOnDetail: true });
+		const disposable: Disposable = commands.registerCommand('serverpod.serverpod', async () => {
+			const option = await window.showQuickPick(Constants.quickPicks, { matchOnDetail: true });
 			if (option === Constants.quickPicks[0]) {
-				await _serverpod.createFlutterProject('', '');
+				await _serverpod.createServerpodFlutterProject();
+			}
+			if (option === Constants.quickPicks[1]) {
+			await _serverpod.generateServerpodCode();
 			}
 		});
 
 		context.subscriptions.push(disposable);
 	} catch (error) {
 		console.error(error);
-		await vscode.window.showInformationMessage(`${error}`);
+		await window.showInformationMessage(`${error}`);
 		return;
 	}
 }

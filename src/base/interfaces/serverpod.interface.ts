@@ -1,3 +1,20 @@
-export interface ServerpodInterface{
-  createFlutterProject(name: string, path: string): Promise<void>;
+/**
+ * ServerPod interface
+ */
+export interface ServerpodInterface {
+
+  /**
+   * Creates a serverpod project(Flutter project)
+   * */
+  createServerpodFlutterProject(): Promise<void>;
+
+  /**
+   * Generates the API code for the serverpod project
+   * */
+  generateServerpodCode(): Promise<void>;
+
+  /**
+   * Creates a serverpod project(Dart project)
+   * */
+  generateServerpodDartProject(): Promise<void>;
 }

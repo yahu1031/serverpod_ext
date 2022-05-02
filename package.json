@@ -1,8 +1,12 @@
 {
 	"name": "serverpod",
-	"displayName": "serverpod",
+	"displayName": "Serverpod",
 	"description": "This extension helps you in creating a serverpod project.",
-	"version": "0.0.1",
+	"version": "0.0.1-alpha",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/yahu1031/serverpod_ext"
+	},
 	"engines": {
 		"vscode": "^1.66.0"
 	},
@@ -10,15 +14,14 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:serverpod.create"
+		"onCommand:serverpod.serverpod"
 	],
 	"main": "./out/index.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "serverpod.create",
-				"category": "Serverpod",
-				"title": "Create"
+				"command": "serverpod.serverpod",
+				"title": "Serverpod"
 			}
 		]
 	},

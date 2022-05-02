@@ -7,13 +7,13 @@ import { QuickPickItem } from 'vscode';
 export class Constants {
     static readonly extensionName: string = 'serverpod';
 
-    static readonly extensionFlutterPathKey: string = 'serverpod.flutterPath';
+    static readonly extensionFlutterPathKey: string = `${this.extensionName}.flutterPath`;
+    
+    static readonly extensionDartPathKey: string = `${this.extensionName}.dartPath`;
 
-    static readonly extensionDartPathKey: string = 'serverpod.dartPath';
+    static readonly extensionPubCachePathKey: string = `${this.extensionName}.pubCachePath`;
 
-    static readonly extensionPubCachePathKey: string = 'serverpod.pubCachePath';
-
-    static readonly extensionServerpodPathKey: string = 'serverpod.serverpodPath';
+    static readonly extensionServerpodPathKey: string = `${this.extensionName}.serverpodPath`;
 
     static readonly isWindows: boolean = process.platform === 'win32';
 
@@ -38,4 +38,6 @@ export class Constants {
 
         };
     });
+
+    static readonly projectNameRegex: RegExp = new RegExp("^[a-z][a-z0-9_]*$");
 }

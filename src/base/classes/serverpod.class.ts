@@ -1,10 +1,11 @@
 import { existsSync } from 'fs';
-import { delimiter, join, sep } from 'path';
-import { ExtensionContext, window } from 'vscode';
+import { join, sep } from 'path';
+import { commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, window } from 'vscode';
 import { Constants } from '../../utils/constants.util';
 import { Flutter } from './flutter.class';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Utils } from './../../utils/utils.util';
+import { spawn } from 'child_process';
 
 export class Serverpod implements ServerpodInterface {
     /**
@@ -34,20 +35,86 @@ export class Serverpod implements ServerpodInterface {
      */
     private constructor() { }
 
+
     /**
-     * @override
-     * @param name 
-     * @param path 
-     */
-    public async createFlutterProject(name: string, path: string): Promise<void> {
+     * Generates the API code for the serverpod project
+     * */
+    async generateServerpodCode(): Promise<void> {
+        await window.showWarningMessage('Not yet implemented');
+        return Promise.resolve();
+    }
+
+    /**
+     * Creates a serverpod project(Dart project)
+     * */
+    async generateServerpodDartProject(): Promise<void> {
+        window.showWarningMessage('Not yet implemented');
+        return Promise.resolve();
+    }
+
+    /**
+     * Creates a serverpod project(Flutter project)
+     * */
+    public async createServerpodFlutterProject(): Promise<void> {
         const _path = await Utils.pickPath();
         console.log(_path);
         if (!_path) {
             await window.showErrorMessage('No path selected');
             return;
         }
+        const _name = await window.showInputBox({ placeHolder: 'dummy', value: 'dummy', ignoreFocusOut: true, title: 'Enter a name for your project', validateInput: (s) => Utils.validateProjectName(s, _path) });
+        if (!_name) {
+            await window.showErrorMessage('No name entered');
+            return;
+        }
+        else {
+            const _channel: OutputChannel = window.createOutputChannel("Serverpod");
+            _channel.show();
+            await window.withProgress({
+                title: "Serverpod",
+                location: ProgressLocation.Notification,
+                cancellable: false,
+            }, async (progress, _token) => {
+                progress.report({ message: 'Creating project...' });
+                const p = await new Promise<void>((resolve, reject) => {
+                    const a = spawn('serverpod', ['create', _name], { cwd: _path });
+                    a.stdout.on('data', async (data) => {
+                        console.log(data.toString());
+                        _channel.append(data.toString());
+                    });
+                    a.stdout.on('close', async () => {
+                        console.log('serverpod project created');
+                        resolve();
+                    });
+                    a.stdout.on('error', async (err) => {
+                        console.error(err);
+                        _channel.append(err.toString());
+                        reject();
+                    });
+                });
+                return p;
+            }).then(async () => {
+                console.log('Done');
+                _channel.appendLine('Project created successfully');
+                console.log(Uri.parse(join(_path, _name)));
+                const a = await commands.executeCommand("vscode.openFolder", Uri.parse(join(_path, _name)));
+                console.log(a);
+                window.showInformationMessage('Serverpod project created successfully');
+                return Promise.resolve();
+            }, () => {
+                console.error('Failed');
+                _channel.appendLine('Project creation failed');
+                window.showErrorMessage('Project creation failed');
+                return;
+            });
+            console.log('Done outside');
+            return;
+        }
     }
 
+    /**
+     * Get the serverpod path
+     * */
     public get getServerpodPath(): string | undefined {
         return Serverpod._context?.globalState.get(Constants.extensionServerpodPathKey);
     }
@@ -100,6 +167,7 @@ export class Serverpod implements ServerpodInterface {
                 this.setServerpodPath = _p;
             }
         });
+
         /**
          * Set-up serverpod path
          */

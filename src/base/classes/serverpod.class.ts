@@ -1,5 +1,5 @@
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { delimiter, join, sep } from 'path';
 import { ExtensionContext, window } from 'vscode';
 import { Constants } from '../../utils/constants.util';
 import { Flutter } from './flutter.class';
@@ -72,20 +72,31 @@ export class Serverpod implements ServerpodInterface {
      * */
     public init(): void {
         const _flutter: Flutter = Flutter.getInstance(Serverpod._context!);
+
+        const envPath = Constants.envPaths;
+
+        if (!envPath) {
+            console.error('Failed to fetch env paths');
+            return;
+        }
         /**
          * Set-up flutter paths
          */
-        Constants.envPaths.forEach(_p => {
-            if (_p.endsWith('/flutter/bin')) {
+        envPath.forEach(_p => {
+            if (_p.endsWith(join('flutter', 'bin')) || _p.endsWith(join('flutter', 'bin', sep))) {
+                console.log(_p);
                 _flutter.setFlutterPath = _p;
             }
-            if (_p.endsWith('/dart-sdk/bin')) {
+            if (_p.endsWith(join('dart-sdk', 'bin')) || _p.endsWith(join('dart-sdk', 'bin', sep))) {
+                console.log(_p);
                 _flutter.setDartPath = _p;
             }
-            if (_p.includes('.pub-cache')) {
+            if (Constants.isWindows ? _p.includes(join('pub', 'cache')) : _p.includes('.pub-cache')) {
+                console.log(_p);
                 _flutter.setPubCachePath = _p;
             }
-            if (_p.endsWith('/serverpod')) {
+            if (Constants.isWindows ? _p.endsWith('serverpod.bat') : _p.endsWith('serverpod')) {
+                console.log(_p);
                 this.setServerpodPath = _p;
             }
         });
@@ -93,9 +104,9 @@ export class Serverpod implements ServerpodInterface {
          * Set-up serverpod path
          */
         if (!this.getServerpodPath) {
-            const _serverpodPath: string = join(_flutter.pubCachePath!, 'serverod');
+            const _serverpodPath: string = join(_flutter.pubCachePath!, Constants.isWindows ? 'serverod.bat' : 'serverpod');
             if (existsSync(_serverpodPath)) {
-                this.setServerpodPath = _serverpodPath;
+                this.setServerpodPath = _flutter.pubCachePath!;
             }
         }
     }

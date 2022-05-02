@@ -21,7 +21,7 @@ export class Constants {
 
     static readonly isLinux: boolean = process.platform === 'linux';
 
-    static readonly envPaths: string[] = process.env.PATH!.split(delimiter);
+    static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
     static readonly quickPicks: QuickPickItem[] = [{
         title: 'Create',

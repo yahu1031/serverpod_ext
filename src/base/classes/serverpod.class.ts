@@ -55,7 +55,12 @@ export class Serverpod implements ServerpodInterface {
     /**
      * Creates a serverpod project(Flutter project)
      * */
-    public async createServerpodFlutterProject(): Promise<void> {
+    public async createServerpodFlutterProject(force?: boolean): Promise<void> {
+        const cmdArgs: string[] = [];
+        cmdArgs.push('create');
+        if (force) {
+            cmdArgs.push('--force');
+        }
         const _path = await Utils.pickPath();
         console.log(_path);
         if (!_path) {
@@ -68,6 +73,7 @@ export class Serverpod implements ServerpodInterface {
             return;
         }
         else {
+            cmdArgs.push(_name);
             const _channel: OutputChannel = window.createOutputChannel("Serverpod");
             _channel.show();
             await window.withProgress({
@@ -77,8 +83,12 @@ export class Serverpod implements ServerpodInterface {
             }, async (progress, _token) => {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>((resolve, reject) => {
-                    const a = spawn(Constants.serverpodApp, ['create', _name], { cwd: _path });
+                    const a = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path });
                     a.stdout.on('data', async (data) => {
+                        if (data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
+                            await this.createServerpodFlutterProject(true);
+                            reject();
+                        }
                         console.log(data.toString());
                         _channel.append(data.toString());
                     });

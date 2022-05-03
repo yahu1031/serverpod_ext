@@ -9,3 +9,6 @@
 <h4 align="center" style="font-size: 20px">Still in development 🏗️</h4>
 
 ---
+
+### Note:
+> As this extension in under progress, things may break in windows mostly.

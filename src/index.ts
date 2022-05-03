@@ -15,7 +15,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				await _serverpod.createServerpodFlutterProject();
 			}
 			if (option === Constants.quickPicks[1]) {
-			await _serverpod.generateServerpodCode();
+				await _serverpod.generateServerpodCode();
 			}
 		});
 

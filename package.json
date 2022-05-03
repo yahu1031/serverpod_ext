@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "This extension helps you in creating a serverpod project.",
-	"version": "0.0.2",
+	"version": "0.0.1",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -11,7 +11,7 @@
 	},
 	"icon": "assets/serverpod.png",
 	"engines": {
-		"vscode": "^1.66.0"
+		"vscode": "^1.66.x"
 	},
 	"categories": [
 		"Other"

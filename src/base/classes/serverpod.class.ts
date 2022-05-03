@@ -97,8 +97,9 @@ export class Serverpod implements ServerpodInterface {
                 console.log('Done');
                 _channel.appendLine('Project created successfully');
                 console.log(join(_path, _name));
-                await commands.executeCommand("vscode.openFolder", join(_path, _name));
-                window.showInformationMessage('Serverpod project created successfully');
+                setTimeout(async () => {
+                    await commands.executeCommand("vscode.openFolder", Uri.file(join(_path, _name)));
+                }, 100);
                 return Promise.resolve();
             }, () => {
                 console.error('Failed');

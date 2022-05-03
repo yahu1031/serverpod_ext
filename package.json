@@ -2,12 +2,14 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "This extension helps you in creating a serverpod project.",
-	"version": "0.0.1-alpha",
+	"version": "0.0.1",
+	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/yahu1031/serverpod_ext"
 	},
+	"icon": "assets/serverpod.png",
 	"engines": {
 		"vscode": "^1.66.0"
 	},

@@ -11,7 +11,7 @@
 	},
 	"icon": "assets/serverpod.png",
 	"engines": {
-		"vscode": "^1.66.x"
+		"vscode": "^1.66.2"
 	},
 	"categories": [
 		"Other"

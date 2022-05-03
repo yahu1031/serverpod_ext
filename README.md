@@ -11,4 +11,4 @@
 ---
 
 ### Note:
-> As this extension in under progress, things may break in windows mostly.
+> As this extension in under progress, things may likely break in windows.

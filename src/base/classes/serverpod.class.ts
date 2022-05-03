@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
-import { join, sep } from 'path';
-import { commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, window } from 'vscode';
+import { delimiter, join, sep } from 'path';
+import { commands, ExtensionContext, OutputChannel, ProgressLocation, Uri, window, env } from 'vscode';
 import { Constants } from '../../utils/constants.util';
 import { Flutter } from './flutter.class';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
@@ -67,12 +67,14 @@ export class Serverpod implements ServerpodInterface {
             await window.showErrorMessage('No path selected');
             return;
         }
-        const _name = await window.showInputBox({ placeHolder: 'dummy', value: 'dummy', ignoreFocusOut: true, title: 'Enter a name for your project', validateInput: (s) => Utils.validateProjectName(s, _path) });
+        let _name: string | undefined;
+        _name = await window.showInputBox({ placeHolder: 'dummy', value: 'dummy', ignoreFocusOut: true, title: 'Enter a name for your project', validateInput: (s) => Utils.validateProjectName(s, _path) });
         if (!_name) {
             await window.showErrorMessage('No name entered');
             return;
         }
         else {
+            let _isError: boolean = false;
             cmdArgs.push(_name);
             const _channel: OutputChannel = window.createOutputChannel("Serverpod");
             _channel.show();
@@ -82,34 +84,76 @@ export class Serverpod implements ServerpodInterface {
                 cancellable: false,
             }, async (progress, _token) => {
                 progress.report({ message: 'Creating project...' });
-                const p = await new Promise<void>((resolve, reject) => {
+                const p = await new Promise<void>(async (resolve, reject) => {
+                    let _dockerExists: boolean = false;
+                    spawn('which', ['docker']).on('close', (code) => {
+                        _dockerExists = code === 0;
+                        if (_dockerExists) {
+                            console.log('Docker found');
+                        }
+                        else {
+                            console.log('Docker not installed');
+                            _isError = true;
+                        }
+                    });
                     const a = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path });
                     a.stdout.on('data', async (data) => {
-                        if (data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
-                            await this.createServerpodFlutterProject(true);
-                            reject();
+                        if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
+                            _channel.hide();
+                            _isError = true;
+                            const dockerErrorOption: string[] = [_dockerExists ? 'Continue' : 'Install', _dockerExists ? 'Cancel' : 'continue'];
+                            window.showWarningMessage(_dockerExists ? 'Docker is not running. Please start docker and try again.' : 'Looks like you didn\'t install docker.', ...dockerErrorOption).then(async (value) => {
+                                if (!_dockerExists && value === dockerErrorOption[0]) {
+                                    const _opened = await env.openExternal(Uri.parse('https://www.docker.com/get-started'));
+                                    console.log(`${_opened ? 'Opened' : 'Failed to open'} https://www.docker.com/get-started`);
+                                    resolve();
+                                } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
+                                    _isError = true;
+                                    a.kill();
+                                    await this.createServerpodFlutterProject(true).then(() => {
+                                        console.warn('Force flag is used');
+                                        resolve();
+                                    }, () => {
+                                        _isError = true;
+                                        reject();
+                                    });
+                                    resolve();
+                                } else if (!_dockerExists && value === dockerErrorOption[1]) {
+                                    _isError = true;
+                                    a.kill();
+                                    _channel.hide();
+                                    resolve();
+                                }
+                            });
+                            resolve();
                         }
                         console.log(data.toString());
                         _channel.append(data.toString());
                     });
                     a.stdout.on('close', async () => {
-                        console.log('serverpod project created');
+                        console.log(`serverpod project creation closed with ${_isError}`);
                         resolve();
                     });
-                    a.stdout.on('error', async (err) => {
+                    a.stderr.on('error', async (err) => {
                         console.error(err);
                         _channel.append(err.toString());
+                        _channel.hide();
                         reject();
                     });
                 });
                 return p;
             }).then(async () => {
-                console.log('Done');
-                _channel.appendLine('Project created successfully');
-                console.log(join(_path, _name));
-                setTimeout(async () => {
-                    await commands.executeCommand("vscode.openFolder", Uri.file(join(_path, _name)));
-                }, 100);
+                if (!_isError) {
+                    console.log('serverpod project created');
+                    _channel.appendLine('Project created successfully');
+                    console.log(join(_path, _name!));
+                    setTimeout(async () => {
+                        await commands.executeCommand("vscode.openFolder", Uri.file(join(_path, _name!)));
+                    }, 100);
+                } else {
+                    console.log('Project creation failed');
+                    _channel.appendLine('Project creation failed');
+                }
                 return Promise.resolve();
             }, () => {
                 console.error('Failed');

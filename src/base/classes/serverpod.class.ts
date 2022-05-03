@@ -64,13 +64,17 @@ export class Serverpod implements ServerpodInterface {
         const _path = await Utils.pickPath();
         console.log(_path);
         if (!_path) {
-            await window.showErrorMessage('No path selected');
+            window.showErrorMessage('No path selected');
+            return;
+        }
+        if (!existsSync(_path)) {
+            window.showErrorMessage('Path doesn\'t exist.');
             return;
         }
         let _name: string | undefined;
         _name = await window.showInputBox({ placeHolder: 'dummy', value: 'dummy', ignoreFocusOut: true, title: 'Enter a name for your project', validateInput: (s) => Utils.validateProjectName(s, _path) });
         if (!_name) {
-            await window.showErrorMessage('No name entered');
+            window.showErrorMessage('No name entered');
             return;
         }
         else {

@@ -77,7 +77,7 @@ export class Serverpod implements ServerpodInterface {
             }, async (progress, _token) => {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>((resolve, reject) => {
-                    const a = spawn('serverpod', ['create', _name], { cwd: _path });
+                    const a = spawn(Constants.serverpodApp, ['create', _name], { cwd: _path });
                     a.stdout.on('data', async (data) => {
                         console.log(data.toString());
                         _channel.append(data.toString());
@@ -96,9 +96,8 @@ export class Serverpod implements ServerpodInterface {
             }).then(async () => {
                 console.log('Done');
                 _channel.appendLine('Project created successfully');
-                console.log(Uri.parse(join(_path, _name)));
-                const a = await commands.executeCommand("vscode.openFolder", Uri.parse(join(_path, _name)));
-                console.log(a);
+                console.log(join(_path, _name));
+                await commands.executeCommand("vscode.openFolder", join(_path, _name));
                 window.showInformationMessage('Serverpod project created successfully');
                 return Promise.resolve();
             }, () => {

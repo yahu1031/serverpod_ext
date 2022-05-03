@@ -2,6 +2,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { Uri, window } from 'vscode';
 import { Constants } from './constants.util';
+import * as os from 'os';
 
 export class Utils {
 
@@ -12,10 +13,11 @@ export class Utils {
     static async pickPath(): Promise<string | undefined> {
         const folder: Uri[] | undefined = await window.showOpenDialog({
             canSelectFolders: true,
-            defaultUri: Uri.file(process.env['HOME']!),
+            defaultUri: Uri.file(os.homedir()),
             openLabel: 'Select a directory',
         });
-        return folder?.[0]?.path;
+        // remove the first '/' from the path
+        return folder?.[0].fsPath;
     }
 
     /**

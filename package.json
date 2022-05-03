@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "This extension helps you in creating a serverpod project.",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {

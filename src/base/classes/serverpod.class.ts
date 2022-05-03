@@ -147,7 +147,7 @@ export class Serverpod implements ServerpodInterface {
                 });
                 return p;
             }).then(async () => {
-                if (!_isError) {
+                if (!_isError && existsSync(join(_path, _name!))) {
                     console.log('serverpod project created');
                     _channel.appendLine('Project created successfully');
                     console.log(join(_path, _name!));

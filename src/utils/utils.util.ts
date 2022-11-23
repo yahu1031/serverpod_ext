@@ -1,11 +1,24 @@
 import { existsSync } from 'fs';
-import { join } from 'path';
-import { Uri, window } from 'vscode';
-import { Constants } from './constants.util';
 import * as os from 'os';
+import { join } from 'path';
+import { ExtensionContext, Uri, window, workspace } from 'vscode';
+import { Constants } from './constants.util';
 
 export class Utils {
 
+
+    /**
+     * Private ExtensionContext
+     */
+     private context?: ExtensionContext;
+ 
+     /**
+      * Constructor for the Utils class
+      */
+    constructor(context: ExtensionContext) { 
+        this.context = context;
+    }
+ 
     /**
      * This function shows a quick path pick with the given options
      * @returns the path of the selected folder
@@ -40,5 +53,15 @@ export class Utils {
         if (existsSync(join(path, name))) {
             return 'A project with this name already exists within the selected directory';
         }
+    }
+
+    // getter for the server path
+    get serverPath(): string | undefined {
+        return this.context?.globalState.get(workspace.name + '.server');
+    }
+
+    // setter for the server path
+    set setServerPath(path: string | undefined) {
+        this.context?.globalState.update(workspace.name + '.server', path);
     }
 }

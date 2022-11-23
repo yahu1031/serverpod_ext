@@ -4,8 +4,8 @@ import { Constants } from './utils/constants.util';
 
 export async function activate(context: ExtensionContext): Promise<void> {
 	try {
-		const _serverpod: Serverpod = Serverpod.getInstance(context);
-		_serverpod.init();
+		const _serverpod: Serverpod = new Serverpod(context);
+		await _serverpod.init();
 
 		console.log('Congratulations, your extension \'serverpod\' is now active!');
 
@@ -18,7 +18,6 @@ export async function activate(context: ExtensionContext): Promise<void> {
 				await _serverpod.generateServerpodCode();
 			}
 		});
-
 		context.subscriptions.push(disposable);
 	} catch (error) {
 		console.error(error);

@@ -1,5 +1,5 @@
 import { delimiter } from 'path';
-import { QuickPickItem } from 'vscode';
+import { OutputChannel, QuickPickItem, window } from 'vscode';
 
 /**
  * Extension constants
@@ -26,6 +26,8 @@ export class Constants {
 
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
+    static readonly channel: OutputChannel = window.createOutputChannel("Serverpod");
+
     static readonly quickPicks: QuickPickItem[] = [{
         title: 'Create',
         description: 'Create a new serverpod project',
@@ -38,6 +40,22 @@ export class Constants {
         return {
             label: _cmd.title,
             detail: _cmd.description,
+
+        };
+    });
+
+    static readonly genQuickPicks: QuickPickItem[] = [{
+        title: 'Once',
+        description: 'Generate the necessary files for the serverpod project once',
+    },
+    {
+        title: 'Watch',
+        description: 'Watch the serverpod project and generate the necessary files when changes are made',
+    }
+    ].map(_ => {
+        return {
+            label: _.title,
+            detail: _.description,
 
         };
     });

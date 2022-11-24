@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "This extension helps you in creating a serverpod project.",
-	"version": "0.0.5",
+	"version": "0.0.7",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -21,6 +21,20 @@
 	],
 	"main": "./out/index.js",
 	"contributes": {
+		"customEditors": [
+			{
+				"viewType": "serverpod",
+				"displayName": "Serverpod",
+				"selector": [
+					{
+						"filenamePattern": "*.dart"
+					}
+				],
+				"priority": "option",
+				"activationEvent": "onLanguage:dart",
+				"icon": "run-above"
+			}
+		],
 		"commands": [
 			{
 				"command": "serverpod.create",
@@ -41,8 +55,42 @@
 					"light": "assets/serverpod.png",
 					"dark": "assets/serverpod.png"
 				}
+			},
+			{
+				"command": "serverpod.serve",
+				"title": "Run the serverpod server",
+				"category": "Serverpod",
+				"shortTitle": "Run Server",
+				"icon": {
+					"light": "assets/serverpod.png",
+					"dark": "assets/serverpod.png"
+				}
+			},
+			{
+				"command": "serverpod.stopServe",
+				"title": "Stop the serverpod server",
+				"category": "Serverpod",
+				"shortTitle": "Stop Server",
+				"icon": {
+					"light": "assets/server-on.png",
+					"dark": "assets/server-on.png"
+				}
 			}
-		]
+		],
+		"menus": {
+			"editor/title": [
+				{
+				  "command": "serverpod.serve",
+				  "group": "navigation",
+				  "when": "serverpod.serving != 'undefined' && serverpod.serving == false"
+				},
+				{
+				  "command": "serverpod.stopServe",
+				  "group": "navigation",
+				  "when": "serverpod.serving != 'undefined' && serverpod.serving == true"
+				}
+			  ]
+		  }
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -62,7 +110,9 @@
 		"eslint": "^8.14.0",
 		"glob": "^8.0.1",
 		"mocha": "^9.2.2",
-		"typescript": "^4.6.4",
-		"@types/js-yaml": "^4.0.5"
+		"typescript": "^4.6.4"
+	},
+	"dependencies": {
+		"yaml": "^2.1.3"
 	}
 }

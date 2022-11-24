@@ -21,5 +21,5 @@ export interface ServerpodInterface {
   /**
    * Starts the serverpod server
    * */
-  // startServerpodServer(): Promise<void>;
+  startServerpodServer(): Promise<void>;
 }

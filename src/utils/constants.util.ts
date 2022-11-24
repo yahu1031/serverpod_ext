@@ -30,7 +30,9 @@ export class Constants {
 
     static readonly generateCommand: string = `${this.extensionName}.generate`;
     
-    static readonly serverCommand: string = `${this.extensionName}.server`;
+    static readonly serveCommand: string = `${this.extensionName}.serve`;
+    
+    static readonly stopServeCommand: string = `${this.extensionName}.stopServe`;
 
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 

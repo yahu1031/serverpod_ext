@@ -1,8 +1,9 @@
-import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
 import * as vscode from 'vscode';
+import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
@@ -24,6 +25,9 @@ export class Serverpod implements ServerpodInterface {
         this._flutter = new Flutter(context);
     }
 
+    private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
+    
+    private _serverSpawn: ChildProcessWithoutNullStreams | undefined;
 
     /**
      * {@link Utils} class private instance
@@ -41,6 +45,11 @@ export class Serverpod implements ServerpodInterface {
     private _channel: vscode.OutputChannel = Constants.channel;
 
     /**
+     * Serverpod - server output channel
+     * */
+    private _serverOutputChannel: vscode.OutputChannel | undefined;
+
+    /**
      * Generates the Endpoints and client code for the serverpod project
      * 
      * {@link https://docs.serverpod.dev/concepts/working-with-endpoints Learn more about endpoints}
@@ -52,30 +61,10 @@ export class Serverpod implements ServerpodInterface {
         if (option === Constants.genQuickPicks[1]) {
             generateServerpodCodeArgs.push('--watch');
         }
-        const wf = vscode.workspace.workspaceFolders;
-        let folders: string[] = [];
-        if (wf) {
-            const getDirectories = async (source: string): Promise<string[]> =>
-            (await readdir(source, { withFileTypes: true }))
-              .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
-              .map(dirent => dirent.name);
-            folders = await getDirectories(wf[0].uri.path);
-            folders = folders.map((folder) => {
-                return join(wf[0].uri.path, folder);
-            });
-        }
-        if(!this._utils) {return;}
-        let input: string | undefined;
-        if(!this._utils.serverPath)
-        {
-            input = await vscode.window.showQuickPick(folders, { 
-                matchOnDetail: true,
-                placeHolder: this._utils.serverPath ? 'Select the server folder' : 'Select the project folder',
-                canPickMany: false,
-                title: 'Select the server folder',
-            });
-        }
-        const generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input });
+        const input = await this.setServerpodPathIfNotExists();
+        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input });
+        await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
+		await this.context.globalState.update('serverpod.serving', true);
         this._channel.show();
         await vscode.window.withProgress({
             title: "Serverpod",
@@ -83,15 +72,16 @@ export class Serverpod implements ServerpodInterface {
             cancellable: false,
         }, async (progress, _token) => {
             progress.report({ message: "Generating Serverpod API code..." });
-            generateSpawn.stdout.on('data', (data) => {
+            if(this._generateSpawn !== undefined){
+            this._generateSpawn.stdout.on('data', (data) => {
                 this._channel.appendLine(data.toString());
             });
-            generateSpawn.stderr.on('data', (data) => {
+            this._generateSpawn.stderr.on('data', (data) => {
                 this._channel.appendLine(data.toString());
             });
-            generateSpawn.on('close', (code) => {
+            this._generateSpawn.on('close', (code) => {
                 this._channel.appendLine(`child process exited with code ${code}`);
-            });
+            });}
         });
         return Promise.resolve();
     }
@@ -221,6 +211,132 @@ export class Serverpod implements ServerpodInterface {
     }
 
     /**
+     * Starts the serverpod server
+     * */
+    async startServerpodServer(): Promise<void> {
+        var serverDir = await this.isServerpodProject();
+        if(!serverDir){
+            vscode.window.showErrorMessage('Not a serverpod project');
+            return;
+        }
+        const startServerArgs: string[] = [];
+        if(this._utils.serverPath || serverDir){
+            startServerArgs.push(join('bin', 'main.dart'));
+            this._serverSpawn = spawn('dart', startServerArgs, { cwd: this._utils.serverPath ?? serverDir });
+            await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
+            await this.context.globalState.update('serverpod.serving', true);
+            if(!this._serverOutputChannel){
+            this._serverOutputChannel = vscode.window.createOutputChannel('Serverpod - Server');
+            }
+            this._serverOutputChannel.show();
+            this._serverSpawn.stdout.on('data', (data) => {
+                console.log(data.toString());
+                this._serverOutputChannel!.append(data.toString());
+            });
+            this._serverSpawn.stderr.on('data', (data) => {
+                console.error(data.toString());
+                this._serverOutputChannel!.append(data.toString());
+            });
+            this._serverSpawn.on('close', (code) => {
+                console.log(`Serverpod server closed with code ${code}`);
+                this._serverOutputChannel!.appendLine(`Serverpod server closed with code ${code}`);
+            });
+        } else {
+            await this.setServerpodPathIfNotExists();
+        }
+    }
+
+
+
+    /**
+     * Stop the client generation process
+     * */
+    public stopGenerating(): void {
+        if (this._generateSpawn) {
+            this._generateSpawn.kill();
+        }
+    }
+
+
+    /**
+     * Stop the Serverpod server
+     * */
+    public async stopServer(): Promise<void> {
+        if (this._serverSpawn) {
+            this._serverSpawn.kill();
+            this._serverOutputChannel?.clear();
+            this._serverOutputChannel?.dispose();
+            this._serverOutputChannel = undefined;
+            await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+		    await this.context.globalState.update('serverpod.serving', false);
+        }
+    }
+
+    async setServerpodPathIfNotExists(): Promise<string | undefined> {
+        const wf = vscode.workspace.workspaceFolders;
+        let folders: string[] = [];
+        if (wf) {
+            const getDirectories = async (source: string): Promise<string[]> =>
+            (await readdir(source, { withFileTypes: true }))
+              .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
+              .map(dirent => dirent.name);
+            folders = await getDirectories(wf[0].uri.path);
+            folders = folders.map((folder) => {
+                return join(wf[0].uri.path, folder);
+            });
+        }
+        if(!this._utils) {return;}
+        let input: string | undefined;
+        if(!this._utils.serverPath) 
+        {
+            input = await vscode.window.showQuickPick(folders, { 
+                matchOnDetail: true,
+                placeHolder: this._utils.serverPath ? 'Select the server folder' : 'Select the project folder',
+                canPickMany: false,
+                title: 'Select the server folder',
+            });
+        }
+        return input;
+    }
+
+    /**
+     * Check if project is a serverpod project
+     * */
+    public async isServerpodProject(): Promise<string | undefined> {
+        const folders = vscode.workspace.workspaceFolders;
+        let serverpodProj: string | undefined;
+        if (folders) {
+            const folder = folders[0];
+            const getDirectories = async (source: string): Promise<string[]> =>
+            (await readdir(source, { withFileTypes: true }))
+              .map(dirent => dirent.name);
+            var dirs = await getDirectories(folder.uri.fsPath);
+            dirs.forEach(dir => {
+                // check if there is any pubspec.yaml file
+                if (dir === 'pubspec.yaml') {
+                    const doc: any = parse(readFileSync(join(folder.uri.fsPath, dir), 'utf8'));
+                        if (doc.dependencies?.serverpod !== undefined) {
+                            serverpodProj = folder.uri.fsPath;
+                            return Promise.resolve(serverpodProj);
+                        }
+                }
+                else if(!dir.startsWith('.')){
+                    var _pubspecPath: string = join(folder.uri.fsPath, dir, 'pubspec.yaml');
+                    var yamlExists = existsSync(_pubspecPath);
+                    var genExists = existsSync(join(folder.uri.fsPath, dir, 'generated'));
+                    if(yamlExists && genExists){
+                        const doc: any = parse(readFileSync(_pubspecPath, 'utf8'));
+                        if (doc.dependencies?.serverpod !== undefined) {
+                            serverpodProj = join(folder.uri.fsPath, dir);
+                        }
+                    }
+                }
+            });
+        }
+        return Promise.resolve(serverpodProj);
+    }
+
+    /**
      * Get the serverpod path
      * */
     public get getServerpodPath(): string | undefined {
@@ -246,7 +362,7 @@ export class Serverpod implements ServerpodInterface {
      * Initialize the serverpod extension necessary paths
      * */
     public async init(): Promise<void> {
-        this._utils.setServerPath = await this._flutter.isServerpodProject();
+        this._utils.setServerPath = await this.isServerpodProject();
         const envPath = Constants.envPaths;
 
         if (!envPath) {
@@ -268,10 +384,6 @@ export class Serverpod implements ServerpodInterface {
             if (Constants.isWindows ? _p.includes(join('pub', 'cache')) : _p.includes('.pub-cache')) {
                 console.log(_p);
                 this._flutter.setPubCachePath = _p;
-            }
-            if (_p.endsWith(Constants.serverpodApp)) {
-                console.log(_p);
-                this.setServerpodPath = _p;
             }
         });
 

@@ -24,6 +24,14 @@ export class Constants {
 
     static readonly extensionServerpodPathKey: string = `${this.extensionName}.serverpodPath`;
 
+    static readonly extensionServerPath: string = `${this.extensionName}.serverPath`;
+
+    static readonly createCommand: string = `${this.extensionName}.create`;
+
+    static readonly generateCommand: string = `${this.extensionName}.generate`;
+    
+    static readonly serverCommand: string = `${this.extensionName}.server`;
+
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
     static readonly channel: OutputChannel = window.createOutputChannel("Serverpod");
@@ -45,12 +53,12 @@ export class Constants {
     });
 
     static readonly genQuickPicks: QuickPickItem[] = [{
-        title: 'Once',
+        title: 'Once (Recommended)',
         description: 'Generate the necessary files for the serverpod project once',
     },
     {
-        title: 'Watch',
-        description: 'Watch the serverpod project and generate the necessary files when changes are made',
+        title: 'Watch (BETA - EXPERIMENTAL)',
+        description: 'Watch the serverpod project and generate the necessary files when changes are made (BETA - EXPERIMENTAL)',
     }
     ].map(_ => {
         return {

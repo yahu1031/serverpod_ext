@@ -1,5 +1,6 @@
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
+import { load } from 'js-yaml';
 import { join } from 'path';
 import { ExtensionContext, workspace } from 'vscode';
 import { Constants } from '../../utils/constants.util';
@@ -72,10 +73,14 @@ export class Flutter {
             var dirs = await getDirectories(folder.uri.fsPath);
             dirs.forEach(dir => {
                 if(!dir.startsWith('.')){
-                    var yamlExists = existsSync(join(folder.uri.fsPath, dir, 'pubspec.yaml'));
+                    var _pubspecPath: string = join(folder.uri.fsPath, dir, 'pubspec.yaml');
+                    var yamlExists = existsSync(_pubspecPath);
                     var genExists = existsSync(join(folder.uri.fsPath, dir, 'generated'));
                     if(yamlExists && genExists){
-                        serverpodProj = join(folder.uri.fsPath, dir);
+                        const doc: any = load(readFileSync(_pubspecPath, 'utf8'));
+                        if (doc.dependencies?.serverpod !== undefined) {
+                            serverpodProj = join(folder.uri.fsPath, dir);
+                        }
                     }
                 }
             });

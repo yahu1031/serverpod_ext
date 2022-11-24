@@ -1,7 +1,7 @@
 import { existsSync } from 'fs';
 import * as os from 'os';
 import { join } from 'path';
-import { ExtensionContext, Uri, window, workspace } from 'vscode';
+import { ExtensionContext, Uri, window } from 'vscode';
 import { Constants } from './constants.util';
 
 export class Utils {
@@ -57,11 +57,11 @@ export class Utils {
 
     // getter for the server path
     get serverPath(): string | undefined {
-        return this.context?.globalState.get(workspace.name + '.server');
+        return this.context?.globalState.get(Constants.extensionServerPath);
     }
 
     // setter for the server path
     set setServerPath(path: string | undefined) {
-        this.context?.globalState.update(workspace.name + '.server', path);
-    }
+        this.context?.globalState.update(Constants.extensionServerPath, path);
+      }
 }

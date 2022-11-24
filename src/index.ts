@@ -8,17 +8,9 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		await _serverpod.init();
 
 		console.log('Congratulations, your extension \'serverpod\' is now active!');
-
-		const disposable: Disposable = commands.registerCommand('serverpod.serverpod', async () => {
-			const option = await window.showQuickPick(Constants.quickPicks, { matchOnDetail: true });
-			if (option === Constants.quickPicks[0]) {
-				await _serverpod.createServerpodFlutterProject();
-			}
-			if (option === Constants.quickPicks[1]) {
-				await _serverpod.generateServerpodCode();
-			}
-		});
-		context.subscriptions.push(disposable);
+		const disposableCreate: Disposable = commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());
+		const disposableGenerate: Disposable = commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
+		context.subscriptions.push(disposableCreate, disposableGenerate);
 	} catch (error) {
 		console.error(error);
 		await window.showInformationMessage(`${error}`);

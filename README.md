@@ -8,9 +8,10 @@
 - It supports in creating a serverpod project.
 - It supports in generating and watching(Beta) client code.
 
-<h4 align="center" style="font-size: 20px">Still in development 🏗️</h4>
-
 ---
 
+<h2 align="center">🚧 Still in development 🚧</h2>
+
 ### Note:
+
 > As this extension in under progress, things may likely break.

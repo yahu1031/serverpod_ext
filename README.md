@@ -1,6 +1,7 @@
 <h1 align="center" style="font-size: 40px">Serverpod</h1>
 
-<p align="center">Serverpod extension helps you in creating a serverpod project and generating it's client code.</p>
+<p align="center">Serverpod extension makes your development easy on serverpod apps.</p>
+
 <p align="center" style="opacity: 0.5">Not officially supported by Serverpod Team</p>
 
 ---

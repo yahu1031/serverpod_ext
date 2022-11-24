@@ -1,3 +1,4 @@
+import { exec, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as os from 'os';
 import { join } from 'path';
@@ -54,6 +55,21 @@ export class Utils {
             return 'A project with this name already exists within the selected directory';
         }
     }
+
+    /**
+     * Kill a process by its pid
+     * @param pid the pid of the process to kill
+     * @returns the error message if the name is not valid or already exists
+     * */
+    static killPid(pid: string): string {
+        console.log("Killing PID " + pid);
+        if (Constants.isWindows) {
+          return execSync(`taskkill /F /PID ${pid}`, { encoding: "utf-8" });
+        } else {
+          var ex = exec(`kill ${pid}`);
+          return ex.exitCode?.toString() ?? 'hey';
+        }
+      }
 
     // getter for the server path
     get serverPath(): string | undefined {

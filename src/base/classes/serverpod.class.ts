@@ -56,15 +56,26 @@ export class Serverpod implements ServerpodInterface {
      * */
     async generateServerpodCode(): Promise<void> {
         const generateServerpodCodeArgs: string[] = [];
-        const option = await vscode.window.showQuickPick(Constants.genQuickPicks, { matchOnDetail: true });
-        generateServerpodCodeArgs.push('generate');
-        if (option === Constants.genQuickPicks[1]) {
-            generateServerpodCodeArgs.push('--watch');
+        var options = Constants.genQuickPicks;
+        if(this._generateSpawn) {
+            // var b: any = {
+            //         lable: 'Stop Watching (BETA - EXPERIMENTAL)',
+            //         description: 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)',
+            //     };
+            options[1].label = 'Stop Watching (BETA - EXPERIMENTAL)';
+            options[1].description = 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)';
         }
+        const option = await vscode.window.showQuickPick(options, { ignoreFocusOut: true });
+        if(!option) {return;}
+        generateServerpodCodeArgs.push('generate');
+        // if (option === options[1] && this._generateSpawn) {
+        //     await this.stopGenerating();
+        //     return;
+        // } else {
+            generateServerpodCodeArgs.push('--watch');
+        // }
         const input = await this.setServerpodPathIfNotExists();
         this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input });
-        await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
-		await this.context.globalState.update('serverpod.serving', true);
         this._channel.show();
         await vscode.window.withProgress({
             title: "Serverpod",
@@ -78,6 +89,9 @@ export class Serverpod implements ServerpodInterface {
             });
             this._generateSpawn.stderr.on('data', (data) => {
                 this._channel.appendLine(data.toString());
+            });
+            this._generateSpawn.on('exit', (code, sgn) => {
+                this._channel.appendLine(`Serverpod code generation exited with code ${code} and signal ${sgn}`);
             });
             this._generateSpawn.on('close', (code) => {
                 this._channel.appendLine(`child process exited with code ${code}`);
@@ -246,14 +260,31 @@ export class Serverpod implements ServerpodInterface {
         }
     }
 
-
+    private _timeout = <T>(prom: Promise<T>, time: number) =>
+    Promise.race<T>([prom, new Promise<T>((_r, rej) => setTimeout(rej, time))]);
 
     /**
      * Stop the client generation process
      * */
-    public stopGenerating(): void {
+    public async stopGenerating(): Promise<void> {
         if (this._generateSpawn) {
-            this._generateSpawn.kill();
+            var a = this._generateSpawn.kill(0);
+            var res = Utils.killPid(this._generateSpawn?.pid.toString() ?? '');
+            console.log(res);
+            var re = this._generateSpawn.send('SIGINT');
+            await this._timeout<ExitData>(new Promise(async (cb) => {
+                this._generateSpawn?.on('exit', (code, sgn) => {
+                    cb({ signal: sgn, code: code });
+                });
+                // If it is in windows, kill the process by interrupting the task with Ctrl+C and pass y to confirm
+                if(Constants.isWindows){
+                    this._generateSpawn?.stdin?.write('y\n');
+                }
+            }), 1000);
+            this._generateSpawn = undefined;
+            console.log(a);
+            // this._channel.clear();
+            this._channel.appendLine('Client generation stopped');
         }
     }
 
@@ -263,7 +294,7 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopServer(): Promise<void> {
         if (this._serverSpawn) {
-            this._serverSpawn.kill();
+            this._serverSpawn.kill(0);
             this._serverOutputChannel?.clear();
             this._serverOutputChannel?.dispose();
             this._serverOutputChannel = undefined;
@@ -291,10 +322,12 @@ export class Serverpod implements ServerpodInterface {
         {
             input = await vscode.window.showQuickPick(folders, { 
                 matchOnDetail: true,
+                ignoreFocusOut: true,
                 placeHolder: this._utils.serverPath ? 'Select the server folder' : 'Select the project folder',
                 canPickMany: false,
                 title: 'Select the server folder',
             });
+            if(!input) {return;}
         }
         return input;
     }
@@ -398,3 +431,8 @@ export class Serverpod implements ServerpodInterface {
         }
     }
 }
+
+interface ExitData extends Object {
+    code?: number | null;
+    signal?: NodeJS.Signals | null;
+  }

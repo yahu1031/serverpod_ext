@@ -2,6 +2,11 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## [Pre-Release - 0.0.9]
+
+- Fixed a bug where output channel gets disposed when generation was removed.
+- Fixed killing serverpod process when VSCode is closed.
+
 ## [Pre-Release - 0.0.8]
 
 - Added support for generating client code watch command.

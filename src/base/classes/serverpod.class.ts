@@ -275,8 +275,6 @@ export class Serverpod implements ServerpodInterface {
             process.kill(-this._generateSpawn.pid, 'SIGKILL');
             this._generateSpawn.kill('SIGKILL');
             this._channel?.clear();
-            // this._channel?.dispose();
-            // this._channel = undefined;
             this._generateSpawn = undefined;
         }
     }

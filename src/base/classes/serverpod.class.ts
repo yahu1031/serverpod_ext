@@ -243,7 +243,7 @@ export class Serverpod implements ServerpodInterface {
         const startServerArgs: string[] = [];
         if(this._utils.serverPath || serverDir){
             startServerArgs.push(join('bin', 'main.dart'));
-            this._serverSpawn = spawn('dart', startServerArgs, { cwd: this._utils.serverPath ?? serverDir });
+            this._serverSpawn = spawn('dart', startServerArgs, { cwd: this._utils.serverPath ?? serverDir, detached: true });
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
             await this.context.globalState.update('serverpod.serving', true);
             if(!this._serverOutputChannel){

@@ -1,14 +1,14 @@
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import { ChildProcess, ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
+import pidtree = require('pidtree');
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
-import path = require('path');
 
 export class Serverpod implements ServerpodInterface {
     /**
@@ -25,7 +25,7 @@ export class Serverpod implements ServerpodInterface {
         this._flutter = new Flutter(context);
     }
 
-    private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
+    private _generateSpawn: ChildProcess | undefined;
     
     private _serverSpawn: ChildProcessWithoutNullStreams | undefined;
 
@@ -42,7 +42,7 @@ export class Serverpod implements ServerpodInterface {
     /**
      * {@link Constants.channel | Serverpod channel} private variable
      * */
-    private _channel: vscode.OutputChannel = Constants.channel;
+    private _channel: vscode.OutputChannel | undefined;
 
     /**
      * Serverpod - server output channel
@@ -63,19 +63,22 @@ export class Serverpod implements ServerpodInterface {
             //         description: 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)',
             //     };
             options[1].label = 'Stop Watching (BETA - EXPERIMENTAL)';
-            options[1].description = 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)';
+            options[1].detail = 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)';
         }
         const option = await vscode.window.showQuickPick(options, { ignoreFocusOut: true });
         if(!option) {return;}
         generateServerpodCodeArgs.push('generate');
-        // if (option === options[1] && this._generateSpawn) {
-        //     await this.stopGenerating();
-        //     return;
-        // } else {
+        if (option === options[1] && this._generateSpawn) {
+            await this.stopGenerating();
+            return;
+        } else {
             generateServerpodCodeArgs.push('--watch');
-        // }
+        }
         const input = await this.setServerpodPathIfNotExists();
-        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input });
+        this._generateSpawn = exec([Constants.serverpodApp, ...generateServerpodCodeArgs].join(' '), { cwd: this._utils.serverPath ?? input, maxBuffer: 1024 * 1024 * 10 });
+        if(!this._channel){
+            this._channel = Constants.channel;
+        }
         this._channel.show();
         await vscode.window.withProgress({
             title: "Serverpod",
@@ -83,18 +86,18 @@ export class Serverpod implements ServerpodInterface {
             cancellable: false,
         }, async (progress, _token) => {
             progress.report({ message: "Generating Serverpod API code..." });
-            if(this._generateSpawn !== undefined){
-            this._generateSpawn.stdout.on('data', (data) => {
-                this._channel.appendLine(data.toString());
+            if(this._generateSpawn){
+            this._generateSpawn.stdout?.on('data', (data) => {
+                this._channel?.appendLine(data.toString());
             });
-            this._generateSpawn.stderr.on('data', (data) => {
-                this._channel.appendLine(data.toString());
+            this._generateSpawn.stderr?.on('data', (data) => {
+                this._channel?.appendLine(data.toString());
             });
             this._generateSpawn.on('exit', (code, sgn) => {
-                this._channel.appendLine(`Serverpod code generation exited with code ${code} and signal ${sgn}`);
+                this._channel?.appendLine(`Serverpod code generation exited with code ${code} and signal ${sgn}`);
             });
             this._generateSpawn.on('close', (code) => {
-                this._channel.appendLine(`child process exited with code ${code}`);
+                this._channel?.appendLine(`child process exited with code ${code}`);
             });}
         });
         return Promise.resolve();
@@ -135,6 +138,9 @@ export class Serverpod implements ServerpodInterface {
         else {
             let _isError: boolean = false;
             cmdArgs.push(_name);
+            if(!this._channel){
+                this._channel = Constants.channel;
+            }
             this._channel.show();
             await vscode.window.withProgress({
                 title: "Serverpod",
@@ -157,7 +163,7 @@ export class Serverpod implements ServerpodInterface {
                     const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path });
                     newProjSpawn.stdout.on('data', async (data) => {
                         if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
-                            this._channel.hide();
+                            this._channel?.hide();
                             _isError = true;
                             const dockerErrorOption: string[] = [_dockerExists ? 'Continue' : 'Install', _dockerExists ? 'Cancel' : 'continue'];
                             vscode.window.showWarningMessage(_dockerExists ? 'Docker is not running. Please start docker and try again.' : 'Looks like you didn\'t install docker.', ...dockerErrorOption).then(async (value) => {
@@ -167,7 +173,7 @@ export class Serverpod implements ServerpodInterface {
                                     resolve();
                                 } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
                                     _isError = true;
-                                    newProjSpawn.kill();
+                                    newProjSpawn.kill('SIGKILL');
                                     await this.createServerpodFlutterProject(true).then(() => {
                                         console.warn('Force flag is used');
                                         resolve();
@@ -178,15 +184,15 @@ export class Serverpod implements ServerpodInterface {
                                     resolve();
                                 } else if (!_dockerExists && value === dockerErrorOption[1]) {
                                     _isError = true;
-                                    newProjSpawn.kill();
-                                    this._channel.hide();
+                                    newProjSpawn.kill('SIGKILL');
+                                    this._channel?.hide();
                                     resolve();
                                 }
                             });
                             resolve();
                         }
                         console.log(data.toString());
-                        this._channel.append(data.toString());
+                        this._channel?.append(data.toString());
                     });
                     newProjSpawn.stdout.on('close', async () => {
                         console.log(`serverpod project creation closed with ${_isError}`);
@@ -194,8 +200,8 @@ export class Serverpod implements ServerpodInterface {
                     });
                     newProjSpawn.stderr.on('error', async (err) => {
                         console.error(err);
-                        this._channel.append(err.toString());
-                        this._channel.hide();
+                        this._channel?.append(err.toString());
+                        this._channel?.hide();
                         reject();
                     });
                 });
@@ -203,19 +209,19 @@ export class Serverpod implements ServerpodInterface {
             }).then(async () => {
                 if (!_isError && existsSync(join(_path, _name!))) {
                     console.log('serverpod project created');
-                    this._channel.appendLine('Project created successfully');
+                    this._channel?.appendLine('Project created successfully');
                     console.log(join(_path, _name!));
                     setTimeout(async () => {
                         await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(join(_path, _name!)));
                     }, 100);
                 } else {
                     console.log('Project creation failed');
-                    this._channel.appendLine('Project creation failed');
+                    this._channel?.appendLine('Project creation failed');
                 }
                 return Promise.resolve();
             }, () => {
                 console.error('Failed');
-                this._channel.appendLine('Project creation failed');
+                this._channel?.appendLine('Project creation failed');
                 vscode.window.showErrorMessage('Project creation failed');
                 return;
             });
@@ -260,31 +266,18 @@ export class Serverpod implements ServerpodInterface {
         }
     }
 
-    private _timeout = <T>(prom: Promise<T>, time: number) =>
-    Promise.race<T>([prom, new Promise<T>((_r, rej) => setTimeout(rej, time))]);
-
     /**
      * Stop the client generation process
      * */
     public async stopGenerating(): Promise<void> {
         if (this._generateSpawn) {
-            var a = this._generateSpawn.kill(0);
-            var res = Utils.killPid(this._generateSpawn?.pid.toString() ?? '');
-            console.log(res);
-            var re = this._generateSpawn.send('SIGINT');
-            await this._timeout<ExitData>(new Promise(async (cb) => {
-                this._generateSpawn?.on('exit', (code, sgn) => {
-                    cb({ signal: sgn, code: code });
-                });
-                // If it is in windows, kill the process by interrupting the task with Ctrl+C and pass y to confirm
-                if(Constants.isWindows){
-                    this._generateSpawn?.stdin?.write('y\n');
-                }
-            }), 1000);
-            this._generateSpawn = undefined;
-            console.log(a);
-            // this._channel.clear();
-            this._channel.appendLine('Client generation stopped');
+            const pids = await pidtree(process.pid);
+            process.kill(pids[pids.length - 1], 'SIGKILL');
+            process.disconnect();
+            this._generateSpawn.kill('SIGKILL');
+            this._channel?.clear();
+            this._channel?.dispose();
+            this._channel = undefined;
         }
     }
 
@@ -294,7 +287,8 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopServer(): Promise<void> {
         if (this._serverSpawn) {
-            this._serverSpawn.kill(0);
+            process.kill(this._serverSpawn.pid, 'SIGKILL');
+            this._serverSpawn.kill('SIGKILL');
             this._serverOutputChannel?.clear();
             this._serverOutputChannel?.dispose();
             this._serverOutputChannel = undefined;

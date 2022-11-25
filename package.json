@@ -80,17 +80,17 @@
 		"menus": {
 			"editor/title": [
 				{
-				  "command": "serverpod.serve",
-				  "group": "navigation",
-				  "when": "serverpod.serving != 'undefined' && serverpod.serving == false"
+					"command": "serverpod.serve",
+					"group": "navigation",
+					"when": "serverpod.serving != 'undefined' && serverpod.serving == false"
 				},
 				{
-				  "command": "serverpod.stopServe",
-				  "group": "navigation",
-				  "when": "serverpod.serving != 'undefined' && serverpod.serving == true"
+					"command": "serverpod.stopServe",
+					"group": "navigation",
+					"when": "serverpod.serving != 'undefined' && serverpod.serving == true"
 				}
-			  ]
-		  }
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -113,6 +113,7 @@
 		"typescript": "^4.6.4"
 	},
 	"dependencies": {
+		"pidtree": "^0.6.0",
 		"yaml": "^2.1.3"
 	}
 }

@@ -27,4 +27,10 @@ export async function activate(context: ExtensionContext): Promise<void> {
 	}
 }
 
-export function deactivate() { }
+export async function deactivate(context: ExtensionContext): Promise<void> { 
+	console.log('Your extension \'serverpod\' is now deactivated!');
+	context.subscriptions.forEach((disposable) => disposable.dispose());
+	const _serverpod: Serverpod = new Serverpod(context);
+	await _serverpod.stopServer();
+	await _serverpod.stopGenerating();
+}

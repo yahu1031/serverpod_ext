@@ -2,6 +2,11 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## [Pre-Release - 0.0.8]
+
+- Added support for generating client code watch command.
+- Made spawans detached and killing them.
+
 ## [Pre-Release - 0.0.7]
 
 - Added support of starting/stopping a serverpod server from the Editor actions menu.

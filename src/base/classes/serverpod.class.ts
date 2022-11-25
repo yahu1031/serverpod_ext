@@ -57,12 +57,8 @@ export class Serverpod implements ServerpodInterface {
         const generateServerpodCodeArgs: string[] = [];
         var options = Constants.genQuickPicks;
         if(this._generateSpawn) {
-            // var b: any = {
-            //         lable: 'Stop Watching (BETA - EXPERIMENTAL)',
-            //         description: 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)',
-            //     };
-            options[1].label = 'Stop Watching (BETA - EXPERIMENTAL)';
-            options[1].detail = 'Stop generating the necessary files when changes are made (BETA - EXPERIMENTAL)';
+            options[1].label = 'Stop Watching';
+            options[1].detail = 'Stop generating the necessary files when changes are made.';
         }
         const option = await vscode.window.showQuickPick(options, { ignoreFocusOut: true });
         if(!option) {return;}
@@ -150,7 +146,7 @@ export class Serverpod implements ServerpodInterface {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>(async (resolve, reject) => {
                     let _dockerExists: boolean = false;
-                    spawn('which', ['docker']).on('close', async (code) => {
+                    spawn('which', ['docker'], {detached: true}).on('close', async (code) => {
                         _dockerExists = code === 0;
                         if (_dockerExists) {
                             console.log('Docker found');

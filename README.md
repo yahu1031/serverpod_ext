@@ -7,7 +7,8 @@
 ---
 
 - It supports in creating a serverpod project.
-- It supports in generating and watching(Beta) client code.
+- It supports in generating and watching client code.
+- It suppurts in running and stopping server.
 
 ---
 

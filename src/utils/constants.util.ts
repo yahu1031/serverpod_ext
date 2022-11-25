@@ -59,8 +59,8 @@ export class Constants {
         description: 'Generate the necessary files for the serverpod project once',
     },
     {
-        title: 'Watch (BETA - EXPERIMENTAL)',
-        description: 'Watch the serverpod project and generate the necessary files when changes are made (BETA - EXPERIMENTAL)',
+        title: 'Watch',
+        description: 'Watch the serverpod project and generate the necessary files when changes are made',
     }
     ].map(_ => {
         return {

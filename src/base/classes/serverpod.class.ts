@@ -2,7 +2,6 @@ import { ChildProcess, ChildProcessWithoutNullStreams, exec, spawn } from 'child
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
-import pidtree = require('pidtree');
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
@@ -271,8 +270,7 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopGenerating(): Promise<void> {
         if (this._generateSpawn) {
-            const pids = await pidtree(process.pid);
-            process.kill(pids[pids.length - 1], 'SIGKILL');
+            process.kill(this._generateSpawn.pid, 'SIGKILL');
             process.disconnect();
             this._generateSpawn.kill('SIGKILL');
             this._channel?.clear();

@@ -66,8 +66,11 @@ export class Serverpod implements ServerpodInterface {
         if (option === options[1] && this._generateSpawn) {
             await this.stopGenerating();
             return;
-        } else {
+        } else if(option === options[1] && !this._generateSpawn) {
             generateServerpodCodeArgs.push('--watch');
+        } else if(this._generateSpawn && option === options[0]) {
+            await vscode.window.showErrorMessage('Already generating....');
+            return;
         }
         const input = await this.setServerpodPathIfNotExists();
         this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input, detached: true });
@@ -89,11 +92,11 @@ export class Serverpod implements ServerpodInterface {
             this._generateSpawn.stderr?.on('data', (data) => {
                 this._channel?.appendLine(data.toString());
             });
-            this._generateSpawn.on('exit', (code, sgn) => {
-                this._channel?.appendLine(`Serverpod code generation exited with code ${code} and signal ${sgn}`);
+            this._generateSpawn.on('exit', (_, __) => {
+                this._channel?.appendLine(`Serverpod code generation exited`);
             });
             this._generateSpawn.on('close', (code) => {
-                this._channel?.appendLine(`child process exited with code ${code}`);
+                this._generateSpawn = undefined;
             });}
         });
         return Promise.resolve();
@@ -272,8 +275,9 @@ export class Serverpod implements ServerpodInterface {
             process.kill(-this._generateSpawn.pid, 'SIGKILL');
             this._generateSpawn.kill('SIGKILL');
             this._channel?.clear();
-            this._channel?.dispose();
-            this._channel = undefined;
+            // this._channel?.dispose();
+            // this._channel = undefined;
+            this._generateSpawn = undefined;
         }
     }
 

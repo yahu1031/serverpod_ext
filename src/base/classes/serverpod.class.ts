@@ -1,4 +1,4 @@
-import { ChildProcess, ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
@@ -24,7 +24,7 @@ export class Serverpod implements ServerpodInterface {
         this._flutter = new Flutter(context);
     }
 
-    private _generateSpawn: ChildProcess | undefined;
+    private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
     
     private _serverSpawn: ChildProcessWithoutNullStreams | undefined;
 
@@ -74,11 +74,12 @@ export class Serverpod implements ServerpodInterface {
             generateServerpodCodeArgs.push('--watch');
         }
         const input = await this.setServerpodPathIfNotExists();
-        this._generateSpawn = exec([Constants.serverpodApp, ...generateServerpodCodeArgs].join(' '), { cwd: this._utils.serverPath ?? input, maxBuffer: 1024 * 1024 * 10 });
+        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input, detached: true });
         if(!this._channel){
             this._channel = Constants.channel;
         }
         this._channel.show();
+        this._channel.clear();
         await vscode.window.withProgress({
             title: "Serverpod",
             location: vscode.ProgressLocation.Notification,
@@ -159,7 +160,7 @@ export class Serverpod implements ServerpodInterface {
                             _isError = true;
                         }
                     });
-                    const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path });
+                    const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: true });
                     newProjSpawn.stdout.on('data', async (data) => {
                         if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
                             this._channel?.hide();
@@ -172,6 +173,7 @@ export class Serverpod implements ServerpodInterface {
                                     resolve();
                                 } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
                                     _isError = true;
+                                    process.kill(-newProjSpawn.pid);
                                     newProjSpawn.kill('SIGKILL');
                                     await this.createServerpodFlutterProject(true).then(() => {
                                         console.warn('Force flag is used');
@@ -248,6 +250,7 @@ export class Serverpod implements ServerpodInterface {
             this._serverOutputChannel = vscode.window.createOutputChannel('Serverpod - Server');
             }
             this._serverOutputChannel.show();
+            this._serverOutputChannel.clear();
             this._serverSpawn.stdout.on('data', (data) => {
                 console.log(data.toString());
                 this._serverOutputChannel!.append(data.toString());
@@ -270,8 +273,7 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopGenerating(): Promise<void> {
         if (this._generateSpawn) {
-            process.kill(this._generateSpawn.pid, 'SIGKILL');
-            process.disconnect();
+            process.kill(-this._generateSpawn.pid, 'SIGKILL');
             this._generateSpawn.kill('SIGKILL');
             this._channel?.clear();
             this._channel?.dispose();
@@ -285,7 +287,7 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopServer(): Promise<void> {
         if (this._serverSpawn) {
-            process.kill(this._serverSpawn.pid, 'SIGKILL');
+            process.kill(-this._serverSpawn.pid, 'SIGKILL');
             this._serverSpawn.kill('SIGKILL');
             this._serverOutputChannel?.clear();
             this._serverOutputChannel?.dispose();

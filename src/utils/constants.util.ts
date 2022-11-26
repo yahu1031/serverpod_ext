@@ -1,5 +1,5 @@
 import { delimiter } from 'path';
-import { OutputChannel, QuickPickItem, window } from 'vscode';
+import { DocumentFilter, OutputChannel, QuickPickItem, window } from 'vscode';
 
 /**
  * Extension constants
@@ -71,4 +71,8 @@ export class Constants {
     });
 
     static readonly projectNameRegex: RegExp = new RegExp("^[a-z][a-z0-9_]*$");
+
+    static readonly dartMode: DocumentFilter & { language: string } = { language: "dart", scheme: "file" };
+
+    static readonly protocolYamlMode : DocumentFilter & { language: string } = { language: "yaml", pattern: "**/protocol/*.yaml", scheme: "file" };
 }

@@ -1,0 +1,64 @@
+{
+    "Serverpod endpoint class": {
+        "prefix": "endpnt",
+        "body": [
+            "class $1 extends Endpoint{",
+            "",
+            "  @override",
+            "  Future<void> streamOpened(StreamingSession session) async {",
+            "    // TODO: implement when streamOpened",
+            "  }",
+            "",
+            "  @override",
+            "  Future<void> handleStreamMessage(StreamingSession session, SerializableEntity message) async {",
+            "      // TODO: Handle the stream message",
+            "  }",
+            "",
+            "  @override",
+            "  Future<void> streamClosed(StreamingSession session) async {",
+            "    // TODO: implement when streamClosed",
+            "  }",
+            "}"
+        ],
+        "description": "Create a new endpoint class",
+        "scope": "**/endpoints/*.dart"
+    },
+    "Serverpod FutureCall class": {
+        "prefix": "ftrcall",
+        "body": [
+            "class $1 extends FutureCall {",
+            "  @override",
+            "  Future<void> invoke(Session session, SerializableEntity? object) async {",
+            "    // TODO: Do something interesting in the future here.",
+            "  }",
+            "}"
+        ],
+        "description": "Create a new FutureCall class",
+        "scope": "**/future_calls/*.dart"
+    },
+    "Serverpod Web Widget": {
+        "prefix": "webwdj",
+        "body": [
+            "class $1 extends Widget {",
+            "  $1() : super(name: 'default');",
+            "}"
+        ],
+        "description": "Create a new Web Widget class",
+        "scope": "**/web/*.dart"
+    },
+    "Serverpod Widget Route": {
+        "prefix": "wdjroute",
+        "body": [
+            "class $1 extends WidgetRoute {",
+            "",
+            "  @override",
+            "  Future<Widget> build(Session session, HttpRequest request) async {",
+            "    // TODO: Return a web widget",
+            "    return $2;",
+            "  }",
+            "}"
+        ],
+        "description": "Create a new Widget Route class",
+        "scope": "**/web/*.dart"
+    }
+}

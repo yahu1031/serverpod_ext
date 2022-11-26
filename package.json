@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "Serverpod extension makes your development easy on serverpod apps.",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -14,27 +14,26 @@
 		"vscode": "^1.66.2"
 	},
 	"categories": [
-		"Other"
+		"Other",
+		"Snippets"
 	],
 	"activationEvents": [
 		"*"
 	],
 	"main": "./out/index.js",
 	"contributes": {
-		"customEditors": [
+		"snippets": [
 			{
-				"viewType": "serverpod",
-				"displayName": "Serverpod",
-				"selector": [
-					{
-						"filenamePattern": "*.dart"
-					}
-				],
-				"priority": "option",
-				"activationEvent": "onLanguage:dart",
-				"icon": "run-above"
+			  "language": "dart",
+			  "path": "./snippets/dart.json",
+			  "description": "Serverpod dart snippets "
+			},
+			{
+			  "language": "yaml",
+			  "path": "./snippets/yaml.json",
+			  "description": "Serverpod yaml snippets"
 			}
-		],
+		  ],
 		"commands": [
 			{
 				"command": "serverpod.create",

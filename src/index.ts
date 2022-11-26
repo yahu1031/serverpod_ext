@@ -1,9 +1,11 @@
 import { commands, Disposable, ExtensionContext, window } from 'vscode';
 import { Serverpod } from './base/classes/serverpod.class';
+import { Snippet } from './base/classes/snippet';
 import { Constants } from './utils/constants.util';
 
 export async function activate(context: ExtensionContext): Promise<void> {
 	try {
+		let someTrackingIdCounter: number = 0;
 		const _serverpod: Serverpod = new Serverpod(context);
 		await _serverpod.init();
 
@@ -19,7 +21,7 @@ export async function activate(context: ExtensionContext): Promise<void> {
 		const disposableGenerate: Disposable = commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
 		const disposableServe: Disposable = commands.registerCommand(Constants.serveCommand, async () => await _serverpod.startServerpodServer());
 		const disposableStopServe: Disposable = commands.registerCommand(Constants.stopServeCommand, async () => await _serverpod.stopServer());
-		context.subscriptions.push(disposableCreate, disposableGenerate, disposableServe, disposableStopServe);
+		context.subscriptions.push(disposableCreate, disposableGenerate, disposableServe, disposableStopServe, Snippet.disposableSnippet(Constants.dartMode), Snippet.disposableSnippet(Constants.protocolYamlMode));
 	} catch (error) {
 		console.error(error);
 		await window.showInformationMessage(`${error}`);

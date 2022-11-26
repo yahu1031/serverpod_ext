@@ -1,0 +1,16 @@
+{
+    ".source.yaml": {
+        "SerializableEntity model structure": {
+            "prefix": "model",
+            "body": [
+                "class: $1",
+                "",
+                "table: $2",
+                "fields:",
+                "  $3"
+            ],
+            "description": "Create a new SerializableEntity model structure",
+            "scope": "**/protocol/*.yaml"
+        }
+    }
+}

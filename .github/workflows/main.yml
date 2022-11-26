@@ -11,6 +11,7 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: 16
+      - run: npm i
       - run: npm ci
       - name: Publish
         uses: HaaLeo/publish-vscode-extension@v1

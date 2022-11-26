@@ -2,13 +2,16 @@
 
 <p align="center">Serverpod extension makes your development easy on serverpod apps.</p>
 
-<p align="center" style="opacity: 0.5">Not officially supported by Serverpod Team</p>
+<p align="center" style="opacity: 0.5, color: red">⚠️ Not officially supported by Serverpod Team</p>
 
 ---
 
-- It supports in creating a serverpod project.
-- It supports in generating and watching client code.
-- It suppurts in running and stopping server.
+This extension provides the following features:
+
+- Creating a serverpod project.
+- Generating and watching client code.
+- Running and Stopping server.
+- Code snippets for serverpod server classes and protocol yaml files.
 
 ---
 

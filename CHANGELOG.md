@@ -2,6 +2,11 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## [Pre-Release - 0.1.0]
+
+- Added code snippets for serverpod server classes and protocol yaml files.
+- Fixed killing all grand children spawns of dart and serverpod processes.
+
 ## [Pre-Release - 0.0.9]
 
 - Fixed a bug where output channel gets disposed when generation was removed.

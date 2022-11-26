@@ -22,3 +22,7 @@ jobs:
         with:
           pat: ${{ secrets.PAT }}
           registryUrl: https://marketplace.visualstudio.com
+      - name: Publish
+        uses: ncipollo/release-action@v1
+        with:
+            artifacts: "*.vsix"

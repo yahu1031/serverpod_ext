@@ -9,6 +9,10 @@ import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
 
+var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
+    
+var _serverSpawn: ChildProcessWithoutNullStreams | undefined;
+
 export class Serverpod implements ServerpodInterface {
     /**
      * Private ExtensionContext
@@ -74,6 +78,7 @@ export class Serverpod implements ServerpodInterface {
         }
         const input = await this.setServerpodPathIfNotExists();
         this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input, detached: true });
+        _generateSpawn = this._generateSpawn;
         if(!this._channel){
             this._channel = Constants.channel;
         }
@@ -97,6 +102,7 @@ export class Serverpod implements ServerpodInterface {
             });
             this._generateSpawn.on('close', (code) => {
                 this._generateSpawn = undefined;
+                _generateSpawn = undefined;
             });}
         });
         return Promise.resolve();
@@ -243,6 +249,7 @@ export class Serverpod implements ServerpodInterface {
         if(this._utils.serverPath || serverDir){
             startServerArgs.push(join('bin', 'main.dart'));
             this._serverSpawn = spawn('dart', startServerArgs, { cwd: this._utils.serverPath ?? serverDir, detached: true });
+            _serverSpawn = this._serverSpawn;
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
             await this.context.globalState.update('serverpod.serving', true);
             if(!this._serverOutputChannel){
@@ -276,6 +283,11 @@ export class Serverpod implements ServerpodInterface {
             this._generateSpawn.kill('SIGKILL');
             this._channel?.clear();
             this._generateSpawn = undefined;
+            _generateSpawn = undefined;
+        }
+        if(_generateSpawn) {
+            console.log('Killing generate spawn');
+            process.kill(-_generateSpawn.pid, 'SIGKILL');
         }
     }
 
@@ -290,8 +302,13 @@ export class Serverpod implements ServerpodInterface {
             this._serverOutputChannel?.clear();
             this._serverOutputChannel?.dispose();
             this._serverOutputChannel = undefined;
+            _serverSpawn = undefined;
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
 		    await this.context.globalState.update('serverpod.serving', false);
+        }
+        if(_serverSpawn) {
+            console.log('Killing server spawn');
+            process.kill(-_serverSpawn.pid, 'SIGKILL');
         }
     }
 

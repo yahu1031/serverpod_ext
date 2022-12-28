@@ -16,6 +16,8 @@ export class Constants {
 
     static readonly extensionName: string = 'serverpod';
 
+    static readonly isServerpodProj: string = `${this.extensionName}.isServerpodProj`;
+
     static readonly extensionFlutterPathKey: string = `${this.extensionName}.flutterPath`;
 
     static readonly extensionDartPathKey: string = `${this.extensionName}.dartPath`;
@@ -45,6 +47,10 @@ export class Constants {
     {
         title: 'Generate',
         description: 'Generate the necessary files for the serverpod project',
+    },
+    {
+        title: 'Deploy',
+        description: 'Deploy the serverpod project to the server',
     }
     ].map(_cmd => {
         return {

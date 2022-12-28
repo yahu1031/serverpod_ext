@@ -2,7 +2,7 @@ import { exec, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as os from 'os';
 import { join } from 'path';
-import { ExtensionContext, Uri, window } from 'vscode';
+import * as vscode from 'vscode';
 import { Constants } from './constants.util';
 
 export class Utils {
@@ -11,23 +11,23 @@ export class Utils {
     /**
      * Private ExtensionContext
      */
-     private context?: ExtensionContext;
- 
-     /**
-      * Constructor for the Utils class
-      */
-    constructor(context: ExtensionContext) { 
+    private context?: vscode.ExtensionContext;
+
+    /**
+     * Constructor for the Utils class
+     */
+    constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
- 
+
     /**
      * This function shows a quick path pick with the given options
      * @returns the path of the selected folder
      */
     static async pickPath(): Promise<string | undefined> {
-        const folder: Uri[] | undefined = await window.showOpenDialog({
+        const folder: vscode.Uri[] | undefined = await vscode.window.showOpenDialog({
             canSelectFolders: true,
-            defaultUri: Uri.file(os.homedir()),
+            defaultUri: vscode.Uri.file(os.homedir()),
             openLabel: 'Select a directory',
         });
         // remove the first '/' from the path
@@ -64,12 +64,12 @@ export class Utils {
     static killPid(pid: string): string {
         console.log("Killing PID " + pid);
         if (Constants.isWindows) {
-          return execSync(`taskkill /F /PID ${pid}`, { encoding: "utf-8" });
+            return execSync(`taskkill /F /PID ${pid}`, { encoding: "utf-8" });
         } else {
-          var ex = exec(`kill ${pid}`);
-          return ex.exitCode?.toString() ?? 'hey';
+            var ex = exec(`kill ${pid}`);
+            return ex.exitCode?.toString() ?? 'hey';
         }
-      }
+    }
 
     // getter for the server path
     get serverPath(): string | undefined {
@@ -79,5 +79,10 @@ export class Utils {
     // setter for the server path
     set setServerPath(path: string | undefined) {
         this.context?.globalState.update(Constants.extensionServerPath, path);
-      }
+    }
+
+    // get project path
+    get projectPath(): vscode.WorkspaceFolder | undefined {
+        return vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
+    }
 }

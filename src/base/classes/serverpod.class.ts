@@ -8,10 +8,9 @@ import { Constants } from '../../utils/constants.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
+import path = require('path');
 
 var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
-    
-var _serverSpawn: ChildProcessWithoutNullStreams | undefined;
 
 export class Serverpod implements ServerpodInterface {
     /**
@@ -29,8 +28,8 @@ export class Serverpod implements ServerpodInterface {
     }
 
     private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
-    
-    private _serverSpawn: ChildProcessWithoutNullStreams | undefined;
+
+    private projPath: string | undefined;
 
     /**
      * {@link Utils} class private instance
@@ -48,11 +47,6 @@ export class Serverpod implements ServerpodInterface {
     private _channel: vscode.OutputChannel | undefined;
 
     /**
-     * Serverpod - server output channel
-     * */
-    private _serverOutputChannel: vscode.OutputChannel | undefined;
-
-    /**
      * Generates the Endpoints and client code for the serverpod project
      * 
      * {@link https://docs.serverpod.dev/concepts/working-with-endpoints Learn more about endpoints}
@@ -60,26 +54,26 @@ export class Serverpod implements ServerpodInterface {
     async generateServerpodCode(): Promise<void> {
         const generateServerpodCodeArgs: string[] = [];
         var options = Constants.genQuickPicks;
-        if(this._generateSpawn) {
+        if (this._generateSpawn) {
             options[1].label = 'Stop Watching';
             options[1].detail = 'Stop generating the necessary files when changes are made.';
         }
         const option = await vscode.window.showQuickPick(options, { ignoreFocusOut: true });
-        if(!option) {return;}
+        if (!option) { return; }
         generateServerpodCodeArgs.push('generate');
         if (option === options[1] && this._generateSpawn) {
             await this.stopGenerating();
             return;
-        } else if(option === options[1] && !this._generateSpawn) {
+        } else if (option === options[1] && !this._generateSpawn) {
             generateServerpodCodeArgs.push('--watch');
-        } else if(this._generateSpawn && option === options[0]) {
+        } else if (this._generateSpawn && option === options[0]) {
             await vscode.window.showErrorMessage('Already generating....');
             return;
         }
         const input = await this.setServerpodPathIfNotExists();
         this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input, detached: true });
         _generateSpawn = this._generateSpawn;
-        if(!this._channel){
+        if (!this._channel) {
             this._channel = Constants.channel;
         }
         this._channel.show();
@@ -90,20 +84,21 @@ export class Serverpod implements ServerpodInterface {
             cancellable: false,
         }, async (progress, _token) => {
             progress.report({ message: "Generating Serverpod API code..." });
-            if(this._generateSpawn){
-            this._generateSpawn.stdout?.on('data', (data) => {
-                this._channel?.appendLine(data.toString());
-            });
-            this._generateSpawn.stderr?.on('data', (data) => {
-                this._channel?.appendLine(data.toString());
-            });
-            this._generateSpawn.on('exit', (_, __) => {
-                this._channel?.appendLine(`Serverpod code generation exited`);
-            });
-            this._generateSpawn.on('close', (code) => {
-                this._generateSpawn = undefined;
-                _generateSpawn = undefined;
-            });}
+            if (this._generateSpawn) {
+                this._generateSpawn.stdout?.on('data', (data) => {
+                    this._channel?.appendLine(data.toString());
+                });
+                this._generateSpawn.stderr?.on('data', (data) => {
+                    this._channel?.appendLine(data.toString());
+                });
+                this._generateSpawn.on('exit', (_, __) => {
+                    this._channel?.appendLine(`Serverpod code generation exited`);
+                });
+                this._generateSpawn.on('close', (code) => {
+                    this._generateSpawn = undefined;
+                    _generateSpawn = undefined;
+                });
+            }
         });
         return Promise.resolve();
     }
@@ -143,7 +138,7 @@ export class Serverpod implements ServerpodInterface {
         else {
             let _isError: boolean = false;
             cmdArgs.push(_name);
-            if(!this._channel){
+            if (!this._channel) {
                 this._channel = Constants.channel;
             }
             this._channel.show();
@@ -155,7 +150,7 @@ export class Serverpod implements ServerpodInterface {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>(async (resolve, reject) => {
                     let _dockerExists: boolean = false;
-                    spawn('which', ['docker'], {detached: true}).on('close', async (code) => {
+                    spawn('which', ['docker'], { detached: true }).on('close', async (code) => {
                         _dockerExists = code === 0;
                         if (_dockerExists) {
                             console.log('Docker found');
@@ -236,58 +231,64 @@ export class Serverpod implements ServerpodInterface {
         }
     }
 
+
+
     /**
      * Starts the serverpod server
      * */
     async startServerpodServer(): Promise<void> {
-        var serverDir = await this.isServerpodProject();
-        if(!serverDir){
-            vscode.window.showErrorMessage('Not a serverpod project');
+        console.log('Starting serverpod server ...');
+        if (!this.projPath) {
+            await vscode.window.showErrorMessage('Not a serverpod project');
             return;
         }
-        const startServerArgs: string[] = [];
-        if(this._utils.serverPath || serverDir){
-            startServerArgs.push(join('bin', 'main.dart'));
-            this._serverSpawn = spawn('dart', startServerArgs, { cwd: this._utils.serverPath ?? serverDir, detached: true });
-            _serverSpawn = this._serverSpawn;
+        var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(path.sep);
+        if (!projNameSplitList) {
+            await vscode.window.showErrorMessage('Not a serverpod project');
+            return;
+        }
+        if (this._utils.serverPath || this.projPath) {
+            const launchConfig = Object.assign(
+                {
+                    name: 'Serverpod server',
+                    noDebug: false,
+                    request: "launch",
+                    cwd: path.join("${workspaceFolder}", `${projNameSplitList[projNameSplitList.length - 1]}_server`),
+                    type: "dart",
+                    program: path.join("bin", "main.dart"),
+                }
+            );
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
             await this.context.globalState.update('serverpod.serving', true);
-            if(!this._serverOutputChannel){
-            this._serverOutputChannel = vscode.window.createOutputChannel('Serverpod - Server');
-            }
-            this._serverOutputChannel.show();
-            this._serverOutputChannel.clear();
-            this._serverSpawn.stdout.on('data', (data) => {
-                console.log(data.toString());
-                this._serverOutputChannel!.append(data.toString());
-            });
-            this._serverSpawn.stderr.on('data', (data) => {
-                console.error(data.toString());
-                this._serverOutputChannel!.append(data.toString());
-            });
-            this._serverSpawn.on('close', (code) => {
-                console.log(`Serverpod server closed with code ${code}`);
-                this._serverOutputChannel!.appendLine(`Serverpod server closed with code ${code}`);
-            });
-        } else {
-            await this.setServerpodPathIfNotExists();
+            await vscode.debug.startDebugging(this._utils.projectPath, launchConfig as vscode.DebugConfiguration);
         }
     }
 
     /**
      * Stop the client generation process
      * */
-    public async stopGenerating(): Promise<void> {
-        if (this._generateSpawn) {
-            process.kill(-this._generateSpawn.pid, 'SIGKILL');
-            this._generateSpawn.kill('SIGKILL');
-            this._channel?.clear();
-            this._generateSpawn = undefined;
-            _generateSpawn = undefined;
-        }
-        if(_generateSpawn) {
-            console.log('Killing generate spawn');
-            process.kill(-_generateSpawn.pid, 'SIGKILL');
+    public async stopGenerating(): Promise<boolean> {
+        try {
+            if (this._generateSpawn) {
+                process.kill(-this._generateSpawn.pid, 'SIGKILL');
+                this._generateSpawn.kill('SIGKILL');
+                this._channel?.clear();
+                this._generateSpawn = undefined;
+                _generateSpawn = undefined;
+            }
+            if (_generateSpawn) {
+                console.log('Killing generate spawn');
+                process.kill(-_generateSpawn.pid, 'SIGKILL');
+            }
+            return true;
+        } catch (error) {
+            vscode.window.showErrorMessage('Failed to stop client generation. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {
+                console.error(error);
+                if (value === 'Restart VSCode') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+            return false;
         }
     }
 
@@ -295,20 +296,23 @@ export class Serverpod implements ServerpodInterface {
     /**
      * Stop the Serverpod server
      * */
-    public async stopServer(): Promise<void> {
-        if (this._serverSpawn) {
-            process.kill(-this._serverSpawn.pid, 'SIGKILL');
-            this._serverSpawn.kill('SIGKILL');
-            this._serverOutputChannel?.clear();
-            this._serverOutputChannel?.dispose();
-            this._serverOutputChannel = undefined;
-            _serverSpawn = undefined;
-            await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
-		    await this.context.globalState.update('serverpod.serving', false);
-        }
-        if(_serverSpawn) {
-            console.log('Killing server spawn');
-            process.kill(-_serverSpawn.pid, 'SIGKILL');
+    public async stopServer(): Promise<boolean> {
+        try {
+            if (vscode.debug.activeDebugSession) {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+                await this.context.globalState.update('serverpod.serving', false);
+                await vscode.debug.stopDebugging();
+            }
+            return true;
+        } catch (error) {
+            vscode.window.showErrorMessage('Failed to stop Server. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {
+                console.error(error);
+                if (value === 'Restart VSCode') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+            console.error(error);
+            return false;
         }
     }
 
@@ -317,26 +321,25 @@ export class Serverpod implements ServerpodInterface {
         let folders: string[] = [];
         if (wf) {
             const getDirectories = async (source: string): Promise<string[]> =>
-            (await readdir(source, { withFileTypes: true }))
-              .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
-              .map(dirent => dirent.name);
+                (await readdir(source, { withFileTypes: true }))
+                    .filter(dirent => dirent.isDirectory() && !dirent.name.startsWith('.'))
+                    .map(dirent => dirent.name);
             folders = await getDirectories(wf[0].uri.path);
             folders = folders.map((folder) => {
                 return join(wf[0].uri.path, folder);
             });
         }
-        if(!this._utils) {return;}
+        if (!this._utils) { return; }
         let input: string | undefined;
-        if(!this._utils.serverPath) 
-        {
-            input = await vscode.window.showQuickPick(folders, { 
+        if (!this._utils.serverPath) {
+            input = await vscode.window.showQuickPick(folders, {
                 matchOnDetail: true,
                 ignoreFocusOut: true,
                 placeHolder: this._utils.serverPath ? 'Select the server folder' : 'Select the project folder',
                 canPickMany: false,
                 title: 'Select the server folder',
             });
-            if(!input) {return;}
+            if (!input) { return; }
         }
         return input;
     }
@@ -345,37 +348,38 @@ export class Serverpod implements ServerpodInterface {
      * Check if project is a serverpod project
      * */
     public async isServerpodProject(): Promise<string | undefined> {
-        const folders = vscode.workspace.workspaceFolders;
+        const folder = this._utils.projectPath;
         let serverpodProj: string | undefined;
-        if (folders) {
-            const folder = folders[0];
+        if (!folder) {
+            return Promise.resolve(serverpodProj);
+        } else {
             const getDirectories = async (source: string): Promise<string[]> =>
-            (await readdir(source, { withFileTypes: true }))
-              .map(dirent => dirent.name);
+                (await readdir(source, { withFileTypes: true }))
+                    .map(dirent => dirent.name);
             var dirs = await getDirectories(folder.uri.fsPath);
             dirs.forEach(dir => {
                 // check if there is any pubspec.yaml file
                 if (dir === 'pubspec.yaml') {
                     const doc: any = parse(readFileSync(join(folder.uri.fsPath, dir), 'utf8'));
-                        if (doc.dependencies?.serverpod !== undefined) {
-                            serverpodProj = folder.uri.fsPath;
-                            return Promise.resolve(serverpodProj);
-                        }
+                    if (doc.dependencies?.serverpod || doc.dependencies?.serverpod_flutter || doc.dependencies?.serverpod_client) {
+                        serverpodProj = folder.uri.fsPath;
+                        return Promise.resolve(serverpodProj);
+                    }
                 }
-                else if(!dir.startsWith('.')){
+                else if (!dir.startsWith('.')) {
                     var _pubspecPath: string = join(folder.uri.fsPath, dir, 'pubspec.yaml');
                     var yamlExists = existsSync(_pubspecPath);
                     var genExists = existsSync(join(folder.uri.fsPath, dir, 'generated'));
-                    if(yamlExists && genExists){
+                    if (yamlExists && genExists) {
                         const doc: any = parse(readFileSync(_pubspecPath, 'utf8'));
-                        if (doc.dependencies?.serverpod !== undefined) {
+                        if (doc.dependencies?.serverpod || doc.dependencies?.serverpod_flutter || doc.dependencies?.serverpod_client) {
                             serverpodProj = join(folder.uri.fsPath, dir);
                         }
                     }
                 }
             });
+            return Promise.resolve(serverpodProj);
         }
-        return Promise.resolve(serverpodProj);
     }
 
     /**
@@ -404,7 +408,13 @@ export class Serverpod implements ServerpodInterface {
      * Initialize the serverpod extension necessary paths
      * */
     public async init(): Promise<void> {
-        this._utils.setServerPath = await this.isServerpodProject();
+        this.projPath = await this.isServerpodProject();
+        this._utils.setServerPath = this.projPath;
+        this.listenToDebugEvents();
+        await vscode.commands.executeCommand('setContext', Constants.isServerpodProj, this.projPath ? true : false);
+        await this.context.globalState.update(Constants.isServerpodProj, this.projPath ? true : false);
+        await vscode.commands.executeCommand('setContext', 'serverpod.serving', this.projPath ? false : undefined);
+		await this.context.globalState.update('serverpod.serving', this.projPath ? false : undefined);
         const envPath = Constants.envPaths;
 
         if (!envPath) {
@@ -439,9 +449,19 @@ export class Serverpod implements ServerpodInterface {
             }
         }
     }
-}
 
-interface ExitData extends Object {
-    code?: number | null;
-    signal?: NodeJS.Signals | null;
-  }
+    /**
+     * Listen to debug events
+     * */
+    public listenToDebugEvents(): void {
+        var a = vscode.debug.onDidChangeActiveDebugSession(async (session) => {
+            if (session && session.configuration && session.configuration.cwd.endsWith('_server')) {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
+                await this.context.globalState.update('serverpod.serving', true);
+            } else {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+                await this.context.globalState.update('serverpod.serving', false);
+            }
+        });
+    }
+}

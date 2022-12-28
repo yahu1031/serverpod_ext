@@ -1,5 +1,5 @@
 import { delimiter } from 'path';
-import { DocumentFilter, OutputChannel, QuickPickItem, window } from 'vscode';
+import * as vscode from 'vscode';
 
 /**
  * Extension constants
@@ -15,6 +15,8 @@ export class Constants {
     static readonly serverpodApp: string = this.isWindows ? 'serverpod.bat' : 'serverpod';
 
     static readonly extensionName: string = 'serverpod';
+
+    static readonly isServerpodProj: string = `${this.extensionName}.isServerpodProj`;
 
     static readonly extensionFlutterPathKey: string = `${this.extensionName}.flutterPath`;
 
@@ -36,15 +38,19 @@ export class Constants {
 
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
-    static readonly channel: OutputChannel = window.createOutputChannel("Serverpod");
+    static readonly channel: vscode.OutputChannel = vscode.window.createOutputChannel("Serverpod");
 
-    static readonly quickPicks: QuickPickItem[] = [{
+    static readonly quickPicks: vscode.QuickPickItem[] = [{
         title: 'Create',
         description: 'Create a new serverpod project',
     },
     {
         title: 'Generate',
         description: 'Generate the necessary files for the serverpod project',
+    },
+    {
+        title: 'Deploy',
+        description: 'Deploy the serverpod project to the server',
     }
     ].map(_cmd => {
         return {
@@ -54,7 +60,7 @@ export class Constants {
         };
     });
 
-    static readonly genQuickPicks: QuickPickItem[] = [{
+    static readonly genQuickPicks: vscode.QuickPickItem[] = [{
         title: 'Once (Recommended)',
         description: 'Generate the necessary files for the serverpod project once',
     },
@@ -70,9 +76,9 @@ export class Constants {
         };
     });
 
-    static readonly projectNameRegex: RegExp = new RegExp("^[a-z][a-z0-9_]*$");
+    static readonly projectNameRegex: RegExp = new RegExp("^[0-9a-z]+(?:[0-9a-z]+|_[0-9a-z]+)*$");
 
-    static readonly dartMode: DocumentFilter & { language: string } = { language: "dart", scheme: "file" };
+    static readonly dartMode: vscode.DocumentFilter & { language: string } = { language: "dart", scheme: "file" };
 
-    static readonly protocolYamlMode : DocumentFilter & { language: string } = { language: "yaml", pattern: "**/protocol/*.yaml", scheme: "file" };
+    static readonly protocolYamlMode : vscode.DocumentFilter & { language: string } = { language: "yaml", pattern: "**/protocol/*.yaml", scheme: "file" };
 }

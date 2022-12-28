@@ -15,25 +15,38 @@
 	},
 	"categories": [
 		"Other",
-		"Snippets"
+		"Snippets",
+		"Debuggers"
 	],
 	"activationEvents": [
 		"*"
 	],
 	"main": "./out/index.js",
 	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "serverpod",
+					"title": "Serverpod",
+					"icon": "assets/serverpod-menu.svg"
+				}
+			]
+		},
+		"views": {
+			"serverpod": []
+		},
 		"snippets": [
 			{
-			  "language": "dart",
-			  "path": "./snippets/dart.json",
-			  "description": "Serverpod dart snippets "
+				"language": "dart",
+				"path": "./snippets/dart.json",
+				"description": "Serverpod dart snippets "
 			},
 			{
-			  "language": "yaml",
-			  "path": "./snippets/yaml.json",
-			  "description": "Serverpod yaml snippets"
+				"language": "yaml",
+				"path": "./snippets/yaml.json",
+				"description": "Serverpod yaml snippets"
 			}
-		  ],
+		],
 		"commands": [
 			{
 				"command": "serverpod.create",
@@ -41,8 +54,8 @@
 				"category": "Serverpod",
 				"shortTitle": "Create",
 				"icon": {
-					"light": "assets/serverpod.png",
-					"dark": "assets/serverpod.png"
+					"light": "assets/serverpod.svg",
+					"dark": "assets/serverpod.svg"
 				}
 			},
 			{
@@ -51,18 +64,29 @@
 				"category": "Serverpod",
 				"shortTitle": "Generate",
 				"icon": {
-					"light": "assets/serverpod.png",
-					"dark": "assets/serverpod.png"
+					"light": "assets/serverpod.svg",
+					"dark": "assets/serverpod.svg"
+				}
+			},
+			{
+				"command": "serverpod.not",
+				"title": "Not a serverpod project",
+				"category": "Serverpod",
+				"enablement": "false",
+				"icon": {
+					"light": "assets/not-serverpod.svg",
+					"dark": "assets/not-serverpod.svg"
 				}
 			},
 			{
 				"command": "serverpod.serve",
-				"title": "Run the serverpod server",
+				"title": "Run the server",
 				"category": "Serverpod",
+				"enablement": "serverpod.serving != 'undefined' && serverpod.serving == false",
 				"shortTitle": "Run Server",
 				"icon": {
-					"light": "assets/serverpod.png",
-					"dark": "assets/serverpod.png"
+					"light": "assets/serverpod.svg",
+					"dark": "assets/serverpod.svg"
 				}
 			},
 			{
@@ -71,22 +95,28 @@
 				"category": "Serverpod",
 				"shortTitle": "Stop Server",
 				"icon": {
-					"light": "assets/server-on.png",
-					"dark": "assets/server-on.png"
-				}
+					"light": "assets/server-on.svg",
+					"dark": "assets/server-on.svg"
+				},
+				"enablement": "serverpod.serving != 'undefined' && serverpod.serving == true"
 			}
 		],
 		"menus": {
 			"editor/title": [
 				{
+					"command": "serverpod.not",
+					"group": "navigation",
+					"when": "serverpod.isServerpodProj == false"
+				},
+				{
 					"command": "serverpod.serve",
 					"group": "navigation",
-					"when": "serverpod.serving != 'undefined' && serverpod.serving == false"
+					"when": "serverpod.isServerpodProj == true && serverpod.serving != 'undefined' && serverpod.serving == false"
 				},
 				{
 					"command": "serverpod.stopServe",
 					"group": "navigation",
-					"when": "serverpod.serving != 'undefined' && serverpod.serving == true"
+					"when": "serverpod.isServerpodProj == true && serverpod.serving != 'undefined' && serverpod.serving == true"
 				}
 			]
 		}

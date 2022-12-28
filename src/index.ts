@@ -1,37 +1,38 @@
-import { commands, Disposable, ExtensionContext, window } from 'vscode';
+import * as vscode from 'vscode';
 import { Serverpod } from './base/classes/serverpod.class';
 import { Snippet } from './base/classes/snippet';
 import { Constants } from './utils/constants.util';
 
-export async function activate(context: ExtensionContext): Promise<void> {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
 	try {
-		let someTrackingIdCounter: number = 0;
 		const _serverpod: Serverpod = new Serverpod(context);
 		await _serverpod.init();
-
 		console.log('Congratulations, your extension \'serverpod\' is now active!');
-		var isServerpodProj = await _serverpod.isServerpodProject();
-		await commands.executeCommand('setContext', 'serverpod.serving', undefined);
-		await context.globalState.update('serverpod.serving', undefined);
-		if(isServerpodProj) {
-			await commands.executeCommand('setContext', 'serverpod.serving', false);
-			await context.globalState.update('serverpod.serving', false);
-		} 
-		const disposableCreate: Disposable = commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());
-		const disposableGenerate: Disposable = commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
-		const disposableServe: Disposable = commands.registerCommand(Constants.serveCommand, async () => await _serverpod.startServerpodServer());
-		const disposableStopServe: Disposable = commands.registerCommand(Constants.stopServeCommand, async () => await _serverpod.stopServer());
-		context.subscriptions.push(disposableCreate, disposableGenerate, disposableServe, disposableStopServe, Snippet.disposableSnippet(Constants.dartMode), Snippet.disposableSnippet(Constants.protocolYamlMode));
+		const disposableCreate: vscode.Disposable = vscode.commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());
+		const disposableGenerate: vscode.Disposable = vscode.commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
+		const disposableServe: vscode.Disposable = vscode.commands.registerCommand(Constants.serveCommand, async () => await _serverpod.startServerpodServer());
+		const disposableStopServe: vscode.Disposable = vscode.commands.registerCommand(Constants.stopServeCommand, async () => await _serverpod.stopServer());
+		context.subscriptions.push(
+			disposableCreate,
+			disposableGenerate,
+			disposableServe,
+			disposableStopServe,
+			Snippet.disposableSnippet(Constants.dartMode),
+			Snippet.disposableSnippet(Constants.protocolYamlMode),
+		);
 	} catch (error) {
 		console.error(error);
-		await window.showInformationMessage(`${error}`);
+		await vscode.window.showInformationMessage(`${error}`);
 		return;
 	}
 }
 
-export async function deactivate(context: ExtensionContext): Promise<void> { 
+export async function deactivate(context: vscode.ExtensionContext): Promise<void> {
 	const _serverpod: Serverpod = new Serverpod(context);
 	_serverpod.stopServer();
 	_serverpod.stopGenerating();
+	context.subscriptions.forEach((subscription: vscode.Disposable) => {
+		console.log('Disposing ' + subscription);
+	});
 	console.log('Your extension \'serverpod\' is now deactivated!');
 }

@@ -36,19 +36,3 @@ export async function deactivate(context: vscode.ExtensionContext): Promise<void
 	});
 	console.log('Your extension \'serverpod\' is now deactivated!');
 }
-
-function function1(arg: string, callback:(...arg: any[]) => any) {
-    console.log(arg);
-	callback();
-}
-
-function1('test', somePromiseFunction);
-function1('test', async () => somePromiseFunction());
-
-var a = 'some string';
-function somePromiseFunction(): Promise<string> {
-	console.log(a);
-	return new Promise((resolve, reject) => {
-		resolve('some promise function');
-	});
-}

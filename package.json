@@ -9,7 +9,7 @@
 		"type": "git",
 		"url": "https://github.com/yahu1031/serverpod_ext"
 	},
-	"icon": "assets/serverpod.svg",
+	"icon": "assets/serverpod.png",
 	"engines": {
 		"vscode": "^1.66.2"
 	},

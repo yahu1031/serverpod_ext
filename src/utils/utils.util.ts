@@ -2,7 +2,7 @@ import { exec, execSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as os from 'os';
 import { join } from 'path';
-import { ExtensionContext, Uri, window, workspace, WorkspaceFolder } from 'vscode';
+import * as vscode from 'vscode';
 import { Constants } from './constants.util';
 
 export class Utils {
@@ -11,12 +11,12 @@ export class Utils {
     /**
      * Private ExtensionContext
      */
-    private context?: ExtensionContext;
+    private context?: vscode.ExtensionContext;
 
     /**
      * Constructor for the Utils class
      */
-    constructor(context: ExtensionContext) {
+    constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
 
@@ -25,9 +25,9 @@ export class Utils {
      * @returns the path of the selected folder
      */
     static async pickPath(): Promise<string | undefined> {
-        const folder: Uri[] | undefined = await window.showOpenDialog({
+        const folder: vscode.Uri[] | undefined = await vscode.window.showOpenDialog({
             canSelectFolders: true,
-            defaultUri: Uri.file(os.homedir()),
+            defaultUri: vscode.Uri.file(os.homedir()),
             openLabel: 'Select a directory',
         });
         // remove the first '/' from the path
@@ -82,7 +82,7 @@ export class Utils {
     }
 
     // get project path
-    get projectPath(): WorkspaceFolder | undefined {
-        return workspace.workspaceFolders![0];
+    get projectPath(): vscode.WorkspaceFolder | undefined {
+        return vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
     }
 }

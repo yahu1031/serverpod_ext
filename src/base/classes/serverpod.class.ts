@@ -12,8 +12,6 @@ import path = require('path');
 
 var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
 
-var _serverSpawn: ChildProcessWithoutNullStreams | undefined;
-
 export class Serverpod implements ServerpodInterface {
     /**
      * Private ExtensionContext
@@ -31,7 +29,7 @@ export class Serverpod implements ServerpodInterface {
 
     private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
 
-    private _serverSpawn: ChildProcessWithoutNullStreams | undefined;
+    private projPath: string | undefined;
 
     /**
      * {@link Utils} class private instance
@@ -244,13 +242,29 @@ export class Serverpod implements ServerpodInterface {
      * Starts the serverpod server
      * */
     async startServerpodServer(): Promise<void> {
-        var serverDir = await this.isServerpodProject();
-        if (!serverDir) {
+        console.log('Starting serverpod server ...', this.projPath);
+        if (!this.projPath) {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
         }
-        if (this._utils.serverPath || serverDir) {
-            var launchConfig = this.context.globalState.get('serverpod.launchConfig');
+        var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(path.sep);
+        if (!projNameSplitList) {
+            await vscode.window.showErrorMessage('Not a serverpod project');
+            return;
+        }
+        if (this._utils.serverPath || this.projPath) {
+            const launchConfig = Object.assign(
+                {
+                    name: 'Serverpod server',
+                    noDebug: false,
+                    request: "launch",
+                    cwd: path.join("${workspaceFolder}", `${projNameSplitList[projNameSplitList.length - 1]}_server`),
+                    type: "dart",
+                    program: path.join("bin", "main.dart"),
+                }
+            );
+            await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
+            await this.context.globalState.update('serverpod.serving', true);
             await vscode.debug.startDebugging(this._utils.projectPath, launchConfig as vscode.DebugConfiguration);
         }
     }
@@ -289,26 +303,9 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopServer(): Promise<boolean> {
         try {
-            // const debugConfig: vscode.DebugConfiguration | undefined = Object.assign({}, {
-            //     name: `Dart & Flutter (${currentTestName})`,
-            //     request: "launch",
-            //     type: "dart",
-            // }, extraConfiguration);
-            // await vscode.debug.stopDebugging(debugConfig);
-            if (this._serverSpawn) {
-                process.kill(-this._serverSpawn.pid, 'SIGKILL');
-                this._serverSpawn.kill('SIGKILL');
-                this._serverOutputChannel?.clear();
-                this._serverOutputChannel?.dispose();
-                this._serverOutputChannel = undefined;
-                _serverSpawn = undefined;
-                await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
-                await this.context.globalState.update('serverpod.serving', false);
-            }
-            if (_serverSpawn) {
-                console.log('Killing server spawn');
-                process.kill(-_serverSpawn.pid, 'SIGKILL');
-            }
+            await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+            await this.context.globalState.update('serverpod.serving', false);
+            await vscode.debug.stopDebugging();
             return true;
         } catch (error) {
             vscode.window.showErrorMessage('Failed to stop Server. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {
@@ -354,9 +351,9 @@ export class Serverpod implements ServerpodInterface {
      * Check if project is a serverpod project
      * */
     public async isServerpodProject(): Promise<string | undefined> {
-        const folder = this._utils.projectPath ?? (vscode.workspace.workspaceFolders!)[0];
+        const folder = this._utils.projectPath;
         let serverpodProj: string | undefined;
-        if (folder === undefined) {
+        if (!folder) {
             return Promise.resolve(serverpodProj);
         } else {
             const getDirectories = async (source: string): Promise<string[]> =>
@@ -414,11 +411,13 @@ export class Serverpod implements ServerpodInterface {
      * Initialize the serverpod extension necessary paths
      * */
     public async init(): Promise<void> {
-        var projPath = await this.isServerpodProject();
-        this._utils.setServerPath = projPath;
-
-        await vscode.commands.executeCommand('setContext', Constants.isServerpodProj, projPath ? true : false);
-        await this.context.globalState.update(Constants.isServerpodProj, projPath ? true : false);
+        this.projPath = await this.isServerpodProject();
+        this._utils.setServerPath = this.projPath;
+        this.listenToDebugEvents();
+        await vscode.commands.executeCommand('setContext', Constants.isServerpodProj, this.projPath ? true : false);
+        await this.context.globalState.update(Constants.isServerpodProj, this.projPath ? true : false);
+        await vscode.commands.executeCommand('setContext', 'serverpod.serving', this.projPath ? false : undefined);
+		await this.context.globalState.update('serverpod.serving', this.projPath ? false : undefined);
         const envPath = Constants.envPaths;
 
         if (!envPath) {
@@ -453,9 +452,19 @@ export class Serverpod implements ServerpodInterface {
             }
         }
     }
-}
 
-interface ExitData extends Object {
-    code?: number | null;
-    signal?: NodeJS.Signals | null;
+    /**
+     * Listen to debug events
+     * */
+    public listenToDebugEvents(): void {
+        var a = vscode.debug.onDidChangeActiveDebugSession(async (session) => {
+            if (session && session.configuration && session.configuration.cwd.endsWith('_server')) {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
+                await this.context.globalState.update('serverpod.serving', true);
+            } else {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+                await this.context.globalState.update('serverpod.serving', false);
+            }
+        });
+    }
 }

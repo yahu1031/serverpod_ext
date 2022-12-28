@@ -1,8 +1,5 @@
-import { existsSync, readFileSync } from 'fs';
-import { readdir } from 'fs/promises';
-import { parse } from 'yaml';
-import { join } from 'path';
-import { ExtensionContext, workspace } from 'vscode';
+import { existsSync } from 'fs';
+import * as vscode from 'vscode';
 import { Constants } from '../../utils/constants.util';
 
 export class Flutter {
@@ -10,12 +7,12 @@ export class Flutter {
     /**
      * Private ExtensionContext
      */
-    private context?: ExtensionContext;
+    private context?: vscode.ExtensionContext;
 
     /**
      * Constructor for the Flutter class
      */
-    constructor(context: ExtensionContext) {
+    constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
 

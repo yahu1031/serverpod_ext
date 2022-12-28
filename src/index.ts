@@ -8,10 +8,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		const _serverpod: Serverpod = new Serverpod(context);
 		await _serverpod.init();
 		console.log('Congratulations, your extension \'serverpod\' is now active!');
-		const disposableCreate: vscode.Disposable = vscode.commands.registerCommand(Constants.createCommand, _serverpod.createServerpodFlutterProject);
-		const disposableGenerate: vscode.Disposable = vscode.commands.registerCommand(Constants.generateCommand, _serverpod.generateServerpodCode);
-		const disposableServe: vscode.Disposable = vscode.commands.registerCommand(Constants.serveCommand, _serverpod.startServerpodServer);
-		const disposableStopServe: vscode.Disposable = vscode.commands.registerCommand(Constants.stopServeCommand, _serverpod.stopServer);
+		const disposableCreate: vscode.Disposable = vscode.commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());
+		const disposableGenerate: vscode.Disposable = vscode.commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
+		const disposableServe: vscode.Disposable = vscode.commands.registerCommand(Constants.serveCommand, async () => await _serverpod.startServerpodServer());
+		const disposableStopServe: vscode.Disposable = vscode.commands.registerCommand(Constants.stopServeCommand, async () => await _serverpod.stopServer());
 		context.subscriptions.push(
 			disposableCreate,
 			disposableGenerate,

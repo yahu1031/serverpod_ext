@@ -298,9 +298,11 @@ export class Serverpod implements ServerpodInterface {
      * */
     public async stopServer(): Promise<boolean> {
         try {
-            await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
-            await this.context.globalState.update('serverpod.serving', false);
-            await vscode.debug.stopDebugging();
+            if (vscode.debug.activeDebugSession) {
+                await vscode.commands.executeCommand('setContext', 'serverpod.serving', false);
+                await this.context.globalState.update('serverpod.serving', false);
+                await vscode.debug.stopDebugging();
+            }
             return true;
         } catch (error) {
             vscode.window.showErrorMessage('Failed to stop Server. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {

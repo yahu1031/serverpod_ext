@@ -8,7 +8,6 @@ import { Constants } from '../../utils/constants.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
-import path = require('path');
 
 var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
 
@@ -242,7 +241,7 @@ export class Serverpod implements ServerpodInterface {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
         }
-        var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(path.sep);
+        var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(sep);
         if (!projNameSplitList) {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
@@ -253,9 +252,9 @@ export class Serverpod implements ServerpodInterface {
                     name: 'Serverpod server',
                     noDebug: false,
                     request: "launch",
-                    cwd: path.join("${workspaceFolder}", `${projNameSplitList[projNameSplitList.length - 1]}_server`),
+                    cwd: join("${workspaceFolder}", `${projNameSplitList[projNameSplitList.length - 1]}_server`),
                     type: "dart",
-                    program: path.join("bin", "main.dart"),
+                    program: join("bin", "main.dart"),
                 }
             );
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);

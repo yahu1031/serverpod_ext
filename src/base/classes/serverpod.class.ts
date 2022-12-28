@@ -47,11 +47,6 @@ export class Serverpod implements ServerpodInterface {
     private _channel: vscode.OutputChannel | undefined;
 
     /**
-     * Serverpod - server output channel
-     * */
-    private _serverOutputChannel: vscode.OutputChannel | undefined;
-
-    /**
      * Generates the Endpoints and client code for the serverpod project
      * 
      * {@link https://docs.serverpod.dev/concepts/working-with-endpoints Learn more about endpoints}
@@ -242,7 +237,7 @@ export class Serverpod implements ServerpodInterface {
      * Starts the serverpod server
      * */
     async startServerpodServer(): Promise<void> {
-        console.log('Starting serverpod server ...', this.projPath);
+        console.log('Starting serverpod server ...');
         if (!this.projPath) {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;

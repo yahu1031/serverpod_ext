@@ -69,8 +69,7 @@ export class Serverpod implements ServerpodInterface {
             await vscode.window.showErrorMessage('Already generating....');
             return;
         }
-        const input = await this.setServerpodPathIfNotExists();
-        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath ?? input, detached: true });
+        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath, detached: false });
         _generateSpawn = this._generateSpawn;
         if (!this._channel) {
             this._channel = Constants.channel;
@@ -149,7 +148,7 @@ export class Serverpod implements ServerpodInterface {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>(async (resolve, reject) => {
                     let _dockerExists: boolean = false;
-                    spawn('which', ['docker'], { detached: true }).on('close', async (code) => {
+                    spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
                         _dockerExists = code === 0;
                         if (_dockerExists) {
                             console.log('Docker found');
@@ -159,7 +158,7 @@ export class Serverpod implements ServerpodInterface {
                             _isError = true;
                         }
                     });
-                    const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: true });
+                    const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: false });
                     newProjSpawn.stdout.on('data', async (data) => {
                         if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
                             this._channel?.hide();
@@ -413,7 +412,7 @@ export class Serverpod implements ServerpodInterface {
         await vscode.commands.executeCommand('setContext', Constants.isServerpodProj, this.projPath ? true : false);
         await this.context.globalState.update(Constants.isServerpodProj, this.projPath ? true : false);
         await vscode.commands.executeCommand('setContext', 'serverpod.serving', this.projPath ? false : undefined);
-		await this.context.globalState.update('serverpod.serving', this.projPath ? false : undefined);
+        await this.context.globalState.update('serverpod.serving', this.projPath ? false : undefined);
         const envPath = Constants.envPaths;
 
         if (!envPath) {

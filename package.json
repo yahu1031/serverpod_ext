@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "Serverpod extension makes your development easy on serverpod apps.",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {
@@ -23,13 +23,6 @@
 	],
 	"main": "./out/index.js",
 	"contributes": {
-		"viewsContainers": {
-			"activitybar": [
-			]
-		},
-		"views": {
-			"serverpod": []
-		},
 		"snippets": [
 			{
 				"language": "dart",

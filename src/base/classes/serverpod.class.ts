@@ -1,6 +1,7 @@
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
+import  * as os from 'os';
 import { join, sep } from 'path';
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
@@ -104,7 +105,7 @@ export class Serverpod implements ServerpodInterface {
     /**
      * Creates a serverpod project(Dart project)
      * */
-    async generateServerpodDartProject(): Promise<void> {
+    async createServerpodDartProject(): Promise<void> {
         vscode.window.showWarningMessage('Not yet implemented');
         return Promise.resolve();
     }
@@ -148,6 +149,7 @@ export class Serverpod implements ServerpodInterface {
                 progress.report({ message: 'Creating project...' });
                 const p = await new Promise<void>(async (resolve, reject) => {
                     let _dockerExists: boolean = false;
+                    progress.report({ message: 'Checking docker...' });
                     spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
                         _dockerExists = code === 0;
                         if (_dockerExists) {
@@ -447,6 +449,7 @@ export class Serverpod implements ServerpodInterface {
             }
         }
     }
+
 
     /**
      * Listen to debug events

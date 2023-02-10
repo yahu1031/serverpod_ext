@@ -36,6 +36,8 @@ export class Constants {
     
     static readonly stopServeCommand: string = `${this.extensionName}.stopServe`;
 
+    static readonly deployCommand: string = `${this.extensionName}.deploy`;
+
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
     static readonly channel: vscode.OutputChannel = vscode.window.createOutputChannel("Serverpod");

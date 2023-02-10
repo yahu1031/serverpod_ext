@@ -1,9 +1,11 @@
 import { exec, execSync } from 'child_process';
 import { existsSync } from 'fs';
+import { rm } from 'fs/promises';
 import * as os from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
 import { Constants } from './constants.util';
+import AdmZip = require('adm-zip');
 
 export class Utils {
 
@@ -19,6 +21,32 @@ export class Utils {
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
+
+    // extract a file from a zip
+    static extractFileFromZip(zipPath: string, destination: string): void {
+        try {
+            const zip = new AdmZip(zipPath);
+            zip.extractAllToAsync(destination, true, true, async (_) => {
+                await rm(zipPath, { recursive: true, force: true }).then(() => {
+                    console.log('Deleted : ' + zipPath);
+                });
+            });
+        } catch (e) {
+            console.log('Error extracting zip: ' + e);
+            console.error(e);
+        }
+    }
+
+    static promiseWrapper = (fn: Function) =>
+        new Promise((resolve, reject) => {
+            try {
+                const result = fn();
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            }
+        });
+
 
     /**
      * This function shows a quick path pick with the given options

@@ -16,7 +16,7 @@ export interface ServerpodInterface {
   /**
    * Creates a serverpod project(Dart project)
    * */
-  generateServerpodDartProject(): Promise<void>;
+  createServerpodDartProject(): Promise<void>;
 
   /**
    * Starts the serverpod server

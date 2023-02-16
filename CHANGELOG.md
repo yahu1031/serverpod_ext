@@ -2,6 +2,10 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## 🚀 Pre-Release - 0.2.2
+
+- Updated Code snippets.
+
 ## 🚀 Pre-Release - 0.2.0
 
 - Added debuugging support for serverpod server.

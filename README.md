@@ -10,7 +10,7 @@ This extension provides the following features:
 
 - Creating a serverpod project.
 - Generating and watching client code.
-- Running and Stopping server.
+- Running and Stopping server including debugging.
 - Code snippets for serverpod server classes and protocol yaml files.
 
 ---

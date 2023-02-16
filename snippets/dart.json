@@ -2,7 +2,9 @@
     "Serverpod endpoint class": {
         "prefix": "endpnt",
         "body": [
-            "class $1 extends Endpoint{",
+            "import 'package:serverpod/serverpod.dart';",
+            "",
+            "class $1Endpoint extends Endpoint{",
             "",
             "  @override",
             "  Future<void> streamOpened(StreamingSession session) async {",
@@ -26,7 +28,9 @@
     "Serverpod FutureCall class": {
         "prefix": "ftrcall",
         "body": [
-            "class $1 extends FutureCall {",
+            "import 'package:serverpod/serverpod.dart';",
+            "",
+            "class $1 extends FutureCall<SerializableEntity> {",
             "  @override",
             "  Future<void> invoke(Session session, SerializableEntity? object) async {",
             "    // TODO: Do something interesting in the future here.",
@@ -49,6 +53,8 @@
     "Serverpod Widget Route": {
         "prefix": "wdjroute",
         "body": [
+            "import 'package:serverpod/serverpod.dart';",
+            "",
             "class $1 extends WidgetRoute {",
             "",
             "  @override",

@@ -1,13 +1,13 @@
-import axios from 'axios';
-import { ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
-import { readdir, writeFile } from 'fs/promises';
+import { readdir } from 'fs/promises';
 import { get } from 'https';
-import { arch, platform, tmpdir } from 'os';
+import { arch, platform } from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
+import { LogCategory } from '../../utils/enums.util';
+import { ExtLogger } from '../../utils/logger.util';
 import { Utils } from '../../utils/utils.util';
-
+import which = require('which');
 
 export class Terraform {
 
@@ -30,6 +30,8 @@ export class Terraform {
      * */
     private _utils: Utils;
 
+    private logger: ExtLogger = new ExtLogger(LogCategory.terraform);
+
 
     private downloadLink: string = '';
 
@@ -44,12 +46,12 @@ export class Terraform {
             var data = '';
             res.on('data', (chunk) => {
                 data += chunk;
-                console.log(data);
+                this.logger.info(data);
             });
             res.on('end', () => {
                 var jsonData = JSON.parse(data);
                 var builds = jsonData.builds;
-                console.log(builds);
+                this.logger.info(builds);
                 // find the download link for the current device from the builds array
                 for (var build of builds) {
                     if (build.os === deviceOs && build.arch === deviceArch) {
@@ -57,81 +59,43 @@ export class Terraform {
                         return;
                     }
                 }
+                this.waitForDownloadLink();
                 return this.downloadLink;
             });
         });
+        this.waitForDownloadLink();
         return this.downloadLink;
     }
 
 
+    private waitForDownloadLink() {
+        while (this.downloadLink === '') {
+            this.logger.info('Waiting for download link');
+            setTimeout(() => { }, 10);
+        }
+    }
+
     /**
      * Deploy server to AWS
      * */
-    public deployAws(): void {
-        spawn('which', ['terraform'], { detached: false }).on('exit', async (code) => {
-            if (code === 0) {
-                await this.initConfig();
-            } else {
-                await this.setupTerraform();
-            }
-        });
+    public async deployAws(): Promise<void> {
+        var terraformFound = await which('terraform');
+        terraformFound ? await this.initConfig() : await this.setupTerraform();
     }
 
-    private async setupTerraform() {
+    private async setupTerraform(): Promise<void> {
         var errToast = await vscode.window.showErrorMessage('Terraform not found. Do you want to install it?', 'Yes', 'No');
         if (errToast === 'Yes') {
+            this.getDownloadLink;
+            this.waitForDownloadLink();
+            this.logger.info(this.downloadLink);
+            await Utils.openInBrowser(this.downloadLink);
             await vscode.commands.executeCommand('workbench.action.closePanel');
-            // show progress bar
-            await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: 'Downloading Terraform',
-                cancellable: false
-            }, async (_, __) => {
-                await this.downloadTerraform();
-            }).then(async () => {
-                await vscode.commands.executeCommand('workbench.action.closePanel');
-                await vscode.window.showInformationMessage('Terraform downloaded successfully');
-                var terraformPath = join(tmpdir(), 'terraform', 'terraform');
-                await vscode.commands.executeCommand('workbench.action.closePanel');
-                if (platform() !== 'win32') {
-                    var password = await vscode.window.showInputBox({
-                        title: 'Enter your password',
-                        prompt: 'This is required to move Terraform to /usr/local/bin',
-                        password: true,
-                        ignoreFocusOut: true,
-                    });
-                    var terraformInstallExec = new vscode.ShellExecution(`echo ${password} | sudo -S mv ${terraformPath} /usr/local/bin/`);
-                    var envRefreshExec = new vscode.ShellExecution('source ~/.bash_profile ~/.bashrc ~/.zshrc');
-                    await vscode.window.withProgress({
-                        location: vscode.ProgressLocation.Notification,
-                        title: 'Installing Terraform',
-                        cancellable: false
-                    }, async (_, __) => {
-                        await vscode.tasks.executeTask(new vscode.Task({ type: 'shell' }, 'Installing Terraform', 'shell', terraformInstallExec));
-                        await vscode.commands.executeCommand('workbench.action.closePanel');
-                        await vscode.window.showInformationMessage('Terraform installed successfully');
-                        await vscode.commands.executeCommand('workbench.action.closePanel');
-                        await vscode.window.showInformationMessage('Refreshing environment variables');
-                        await vscode.commands.executeCommand('workbench.action.closePanel');
-                        await vscode.tasks.executeTask(new vscode.Task({ type: 'shell' }, 'Refreshing Environment Variables', 'shell', envRefreshExec));
-                        await vscode.window.showInformationMessage('Environment variables refreshed');
-                        await vscode.commands.executeCommand('workbench.action.closePanel');
-                        await vscode.window.showInformationMessage('Terraform installed successfully');
-                    });
-                } else {
-                    // command in windows is move terraform.exe C:\Program Files\Terraform
-                    exec(`move ${terraformPath} C:\\Program Files\\Terraform`, (err, _, stderr) => {
-                        if (err || stderr) {
-                            return vscode.window.showErrorMessage('Error Installing Terraform');
-                        } else {
-                            return vscode.window.showInformationMessage('Terraform Installed Successfully');
-                        }
-                    });
-                    new vscode.ShellExecution('powershell.exe', ['-ExecutionPolicy', 'Bypass', '-File', 'C:\\Program Files\\Terraform\\terraform.exe']);
-                }
-            });
         } else {
-            await vscode.window.showErrorMessage('Terraform is required to deploy to AWS');
+            await vscode.commands.executeCommand('workbench.action.closePanel');
+            await vscode.window.showErrorMessage('Terraform is required to deploy to AWS', 'Ok').then(() => {
+                vscode.commands.executeCommand('workbench.action.closePanel');
+            });
         }
     }
 
@@ -144,17 +108,17 @@ export class Terraform {
         var tempVars = tfVars;
         var zoneId = await vscode.window.showInputBox({
             title: 'Enter the hosted zone ID',
-            prompt: 'e.g Z2FDTNDATAQYW2',
+            placeHolder: 'e.g Z2FDTNDATAQYW2',
             ignoreFocusOut: true,
         });
         var domain = await vscode.window.showInputBox({
             title: 'Enter the domain name',
-            prompt: 'e.g. example.com',
+            placeHolder: 'e.g. example.com',
             ignoreFocusOut: true,
         });
         var certArnUsWest = await vscode.window.showInputBox({
             title: 'Enter the certificate ARN',
-            prompt: 'us-west-2',
+            placeHolder: 'us-west-2',
             ignoreFocusOut: true,
         });
         var certArnUsEast = await vscode.window.showInputBox({
@@ -176,63 +140,48 @@ export class Terraform {
                 tempVars[key].value = `"${certArnUsEast}"` ?? '';
             }
         }
-        this.writeTerraformVars(configFile, tempVars);
-        this.terraformInit();
-    }
-
-    public async downloadTerraform(): Promise<void> {
-        this.getDownloadLink;
-        while (this.downloadLink === '') {
-            await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-        var link = this.downloadLink;
-        if (link) {
-            // download terraform to temp folder
-            const tempDir = tmpdir();
-            const terraformPath = join(tempDir, 'terraform');
-            const fileName = link.split('/')[link.split('/').length - 1];
-            const terraformZip = join(tempDir, fileName);
-            console.log(link);
-            await axios({
-                method: 'get',
-                url: link,
-                responseType: 'arraybuffer'
-            })
-                .then(async response => {
-                    console.log('Writing terraform to temp folder - ' + terraformZip);
-                    await writeFile(terraformZip, new Uint8Array(response.data));
-                    console.log('Downloaded terraform');
-                })
-                .catch(error => {
-                    console.error(error);
-                });
-            console.log('Extracting terraform');
-            Utils.extractFileFromZip(terraformZip, terraformPath);
-            console.log('Extracting terraform done');
-            return Promise.resolve();
-        }
+        await Utils.writeTerraformVars(configFile, tempVars);
+        // await this.terraformInit();
+        await this.terraformPlan();
     }
 
     /**
      * Terraform initialization
      * */
-    public async terraformInit(): Promise<ChildProcessWithoutNullStreams> {
-        return await Promise.resolve(spawn('terraform', ['init'], { detached: false }).on('exit', async (code) => {
-            return code === 0 ? await vscode.window.showInformationMessage('Terraform initialized successfully')
-                : await vscode.window.showErrorMessage('Terraform initialization failed');
-        }));
+    public async terraformInit(): Promise<any> {
+        const dotTerrafomPath = join(this._utils.serverPath!, 'aws', 'terraform', '.terraform');
+        if (existsSync(dotTerrafomPath)) {
+            return await vscode.window.showInformationMessage('Skipping terraform initialization...');
+        }
+        return await Utils.runSpawnAsync('terraform', ['init']).then((code) => {
+            return code === 0 ? vscode.window.showInformationMessage('Terraform initialized successfully')
+                : vscode.window.showErrorMessage('Terraform initialization failed');
+        });
     }
 
-    public async terraformPlan(): Promise<ChildProcessWithoutNullStreams> {
-        return await Promise.resolve(spawn('terraform', ['plan'], { detached: false })
-            .on('exit', async (code) => {
-                // show an editor with the output of the spawned process
-                // vscode.workspace.openTextDocument(join(this._utils.serverPath!, 'aws', 'terraform', 'terraform.tfplan')).then((doc) => {
-                //     vscode.window.showTextDocument(doc);
-                // });
-                return code === 0 ? await vscode.window.showInformationMessage('Terraform plan executed successfully')
-                    : await vscode.window.showErrorMessage('Terraform plan execution failed');
-            }));
+    public async terraformPlan(): Promise<any> {
+        // vscode.window.createWebviewPanel('Terraform Plan', 'Terraform Plan', vscode.ViewColumn.One, {
+        //     enableScripts: true,
+        //     retainContextWhenHidden: true,
+        // });
+        const dbPassword = await vscode.window.showInputBox({
+            title: 'Enter the database password',
+            placeHolder: 'e.g. password',
+            ignoreFocusOut: true,
+        });
+        var planDirectory = join(this._utils.serverPath!, 'aws', 'terraform');
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        // Utils.runExecAsync('terraform plan', planDirectory, { 'DB_PASSWORD': dbPassword })
+        //     .then(planOutput => {
+        //         const [existingConfigs, changedConfigs] = Utils.extractPlanConfigs(planOutput);
+
+        //         console.log("Existing Configs: ", existingConfigs);
+        //         console.log("Changed Configs: ", changedConfigs);
+        //     })
+        //     .catch(error => {
+        //         console.error(`Error executing Terraform plan: ${error}`);
+        //     });
+
     }
 
     /**
@@ -242,51 +191,9 @@ export class Terraform {
      * */
     public readTerraformVars(path: string): { name: string, value: string }[] {
         const tfvarsLines = readFileSync(path, 'utf-8');
-        return this.tfParser(tfvarsLines);
+        return Utils.tfParser(tfvarsLines);
     }
 
-    /**
-     * `.tfvar` parser
-     * @param {string} data
-     * @returns {any[]} parsed data
-     * */
-    public tfParser(data: string): { name: string, value: any }[] {
-        const tfvars = data.split('\n');
-        const tfvarsParsed: { name: string, value: any }[] = [];
-        tfvars.forEach(line => {
-            const [name, valueString] = line.startsWith('#') || line.length === 0 ? [line, ''] : line.split('=') as any[];
-            let value;
-            if (valueString === 'true' || valueString === 'false' || valueString === '"true"' || valueString === '"false"') {
-                value = valueString === 'true' || valueString === '"true"';
-            } else if (!isNaN(valueString) && valueString !== '') {
-                value = parseFloat(valueString);
-            } else {
-                value = valueString;
-            }
-            tfvarsParsed.push({ name, value });
-        });
-        return tfvarsParsed;
-    }
-
-    /**
-     * Write terraform variables to the file
-     * @param {string} path
-     * @param {any[]} configs
-     * @returns {Promise<boolean>} true if successful
-     * */
-    public async writeTerraformVars(path: string, configs: { name: string, value: string }[]): Promise<boolean> {
-        let tfvars = '';
-        configs.forEach(config => {
-            tfvars += config.name.length === 0 ? '\n' : config.name.startsWith('#') ? `${config.name}\n` : `${config.name} = ${config.value.trim()}\n`;
-        });
-        try {
-            await writeFile(path, tfvars, 'utf-8');
-            return Promise.resolve(true);
-        } catch (e) {
-            console.error(e);
-            return Promise.reject(false);
-        }
-    }
 
     /**
      * Get terraform variables file path

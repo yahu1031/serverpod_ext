@@ -1,14 +1,16 @@
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
-import  * as os from 'os';
 import { join, sep } from 'path';
 import * as vscode from 'vscode';
 import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
+import { LogCategory } from '../../utils/enums.util';
+import { ExtLogger } from '../../utils/logger.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
+import which = require('which');
 
 var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
 
@@ -30,6 +32,8 @@ export class Serverpod implements ServerpodInterface {
     private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
 
     private projPath: string | undefined;
+
+    private logger: ExtLogger = new ExtLogger(LogCategory.serverpod);
 
     /**
      * {@link Utils} class private instance
@@ -150,15 +154,18 @@ export class Serverpod implements ServerpodInterface {
                 const p = await new Promise<void>(async (resolve, reject) => {
                     let _dockerExists: boolean = false;
                     progress.report({ message: 'Checking docker...' });
-                    spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
-                        _dockerExists = code === 0;
+                    await which('docker').then(async (value) => {
+                        _dockerExists = value !== null;
                         if (_dockerExists) {
-                            console.log('Docker found');
+                            this.logger.info('Docker found');
                         }
                         else {
                             await vscode.window.showErrorMessage('Docker not found. Please install docker to continue.');
                             _isError = true;
                         }
+                    }).catch(async (err) => {
+                        await vscode.window.showErrorMessage('Docker not found. Please install docker to continue.');
+                        _isError = true;
                     });
                     const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: false });
                     newProjSpawn.stdout.on('data', async (data) => {
@@ -168,15 +175,13 @@ export class Serverpod implements ServerpodInterface {
                             const dockerErrorOption: string[] = [_dockerExists ? 'Continue' : 'Install', _dockerExists ? 'Cancel' : 'continue'];
                             vscode.window.showWarningMessage(_dockerExists ? 'Docker is not running. Please start docker and try again.' : 'Looks like you didn\'t install docker.', ...dockerErrorOption).then(async (value) => {
                                 if (!_dockerExists && value === dockerErrorOption[0]) {
-                                    const _opened = await vscode.env.openExternal(vscode.Uri.parse('https://www.docker.com/get-started'));
-                                    console.log(`${_opened ? 'Opened' : 'Failed to open'} https://www.docker.com/get-started`);
-                                    resolve();
+                                    resolve(await Utils.openInBrowser('https://www.docker.com/get-started'));
                                 } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
                                     _isError = true;
                                     process.kill(-newProjSpawn.pid);
                                     newProjSpawn.kill('SIGKILL');
                                     await this.createServerpodFlutterProject(true).then(() => {
-                                        console.warn('Force flag is used');
+                                        this.logger.warn('Force flag is used');
                                         resolve();
                                     }, () => {
                                         _isError = true;
@@ -192,15 +197,15 @@ export class Serverpod implements ServerpodInterface {
                             });
                             resolve();
                         }
-                        console.log(data.toString());
+                        this.logger.info(data.toString());
                         this._channel?.append(data.toString());
                     });
                     newProjSpawn.stdout.on('close', async () => {
-                        console.log(`serverpod project creation closed with ${_isError}`);
+                        this.logger.info(`serverpod project creation closed with ${_isError}`);
                         resolve();
                     });
                     newProjSpawn.stderr.on('error', async (err) => {
-                        console.error(err);
+                        this.logger.error(err);
                         this._channel?.append(err.toString());
                         this._channel?.hide();
                         reject();
@@ -209,24 +214,24 @@ export class Serverpod implements ServerpodInterface {
                 return p;
             }).then(async () => {
                 if (!_isError && existsSync(join(_path, _name!))) {
-                    console.log('serverpod project created');
+                    this.logger.info('serverpod project created');
                     this._channel?.appendLine('Project created successfully');
-                    console.log(join(_path, _name!));
+                    this.logger.info(join(_path, _name!));
                     setTimeout(async () => {
                         await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(join(_path, _name!)));
                     }, 100);
                 } else {
-                    console.log('Project creation failed');
+                    this.logger.info('Project creation failed');
                     this._channel?.appendLine('Project creation failed');
                 }
                 return Promise.resolve();
             }, () => {
-                console.error('Failed');
+                this.logger.error('Failed');
                 this._channel?.appendLine('Project creation failed');
                 vscode.window.showErrorMessage('Project creation failed');
                 return;
             });
-            console.log('Done outside');
+            this.logger.info('Done outside');
             return;
         }
     }
@@ -237,12 +242,12 @@ export class Serverpod implements ServerpodInterface {
      * Starts the serverpod server
      * */
     async startServerpodServer(): Promise<void> {
-        console.log('Starting serverpod server ...');
+        this.logger.info('Starting serverpod server ...');
         if (!this.projPath) {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
         }
-        var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(sep);
+        var projNameSplitList = Utils.projectPath?.uri.path.split(sep);
         if (!projNameSplitList) {
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
@@ -260,7 +265,7 @@ export class Serverpod implements ServerpodInterface {
             );
             await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
             await this.context.globalState.update('serverpod.serving', true);
-            await vscode.debug.startDebugging(this._utils.projectPath, launchConfig as vscode.DebugConfiguration);
+            await vscode.debug.startDebugging(Utils.projectPath, launchConfig as vscode.DebugConfiguration);
         }
     }
 
@@ -277,13 +282,13 @@ export class Serverpod implements ServerpodInterface {
                 _generateSpawn = undefined;
             }
             if (_generateSpawn) {
-                console.log('Killing generate spawn');
+                this.logger.info('Killing generate spawn');
                 process.kill(-_generateSpawn.pid, 'SIGKILL');
             }
             return true;
         } catch (error) {
             vscode.window.showErrorMessage('Failed to stop client generation. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {
-                console.error(error);
+                this.logger.error(error);
                 if (value === 'Restart VSCode') {
                     vscode.commands.executeCommand('workbench.action.reloadWindow');
                 }
@@ -306,12 +311,12 @@ export class Serverpod implements ServerpodInterface {
             return true;
         } catch (error) {
             vscode.window.showErrorMessage('Failed to stop Server. Try again or restart VSCode', 'Restart VSCode').then(async (value) => {
-                console.error(error);
+                this.logger.error(error);
                 if (value === 'Restart VSCode') {
                     vscode.commands.executeCommand('workbench.action.reloadWindow');
                 }
             });
-            console.error(error);
+            this.logger.error(error);
             return false;
         }
     }
@@ -348,7 +353,7 @@ export class Serverpod implements ServerpodInterface {
      * Check if project is a serverpod project
      * */
     public async isServerpodProject(): Promise<string | undefined> {
-        const folder = this._utils.projectPath;
+        const folder = Utils.projectPath;
         let serverpodProj: string | undefined;
         if (!folder) {
             return Promise.resolve(serverpodProj);
@@ -418,7 +423,7 @@ export class Serverpod implements ServerpodInterface {
         const envPath = Constants.envPaths;
 
         if (!envPath) {
-            console.error('Failed to fetch env paths');
+            this.logger.error('Failed to fetch env paths');
             return;
         }
         /**
@@ -426,15 +431,15 @@ export class Serverpod implements ServerpodInterface {
          */
         envPath.forEach(_p => {
             if (_p.endsWith(join('flutter', 'bin')) || _p.endsWith(join('flutter', 'bin', sep))) {
-                console.log(_p);
+                this.logger.info(_p);
                 this._flutter.setFlutterPath = _p;
             }
             if (_p.endsWith(join('dart-sdk', 'bin')) || _p.endsWith(join('dart-sdk', 'bin', sep))) {
-                console.log(_p);
+                this.logger.info(_p);
                 this._flutter.setDartPath = _p;
             }
             if (Constants.isWindows ? _p.includes(join('pub', 'cache')) : _p.includes('.pub-cache')) {
-                console.log(_p);
+                this.logger.info(_p);
                 this._flutter.setPubCachePath = _p;
             }
         });

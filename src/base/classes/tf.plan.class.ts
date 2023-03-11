@@ -60,29 +60,29 @@ export class TfPlanner {
         let outputMap = new Map<string, MyListType>();
 
         const terraformJson = JSON.parse(planOutput);
-        const resourceChangesList = terraformJson['resource_changes'];
+        const resourceChangesList = terraformJson['resource_drift'];
 
         for (var myResource of resourceChangesList) {
             if (outputMap.has(myResource.type)) {
                 var list = outputMap.get(myResource.type);
                 if (list !== null) {
-                    var before;
-                    if (myResource.change.before === null) {
-                        before = {};
-                    } else {
-                        before = myResource.change.before;
-                    }
-                    var after;
-                    if (myResource.change.after === null) {
-                        after = {};
-                    } else {
-                        after = myResource.change.after;
-                    }
+                    // var before;
+                    // if (myResource.change.before === null) {
+                    //     before = {};
+                    // } else {
+                    //     before = myResource.change.before;
+                    // }
+                    // var after;
+                    // if (myResource.change.after === null) {
+                    //     after = {};
+                    // } else {
+                    //     after = myResource.change.after;
+                    // }
 
                     var shortMap: TerraformChange =
                         new TerraformChange
                             (myResource.name, myResource.address,
-                                myResource.change['actions'][0], before, after);
+                                myResource.change['actions'][0], myResource.change.before, myResource.change.after);
                     list!.push(
                         shortMap
                     );
@@ -90,17 +90,25 @@ export class TfPlanner {
                     outputMap.set(myResource.type, list!);
                 }
             } else {
-                outputMap.set(myResource.type, []);
+                var newlist = Array<TerraformChange>();
+                var shortMap: TerraformChange =
+                    new TerraformChange
+                        (myResource.name, myResource.address,
+                            myResource.change['actions'][0], myResource.change.before, myResource.change.after);
+                newlist!.push(
+                    shortMap
+                );
+                outputMap.set(myResource.type, newlist);
             }
         }
 
         //console.log(outputMap);
 
-        outputMap.forEach((value, key) => {
-            if (value.length === 0) {
-                outputMap.delete(key);
-            }
-        });
+        // outputMap.forEach((value, key) => {
+        //     if (value.length === 0) {
+        //         outputMap.delete(key);
+        //     }
+        // });
 
         TfViewer.showView(outputMap);
 

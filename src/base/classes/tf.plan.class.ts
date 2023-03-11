@@ -2,29 +2,146 @@
 import { ChangeType } from "../../utils/enums.util";
 import { Diff, PlanAction, ResourceId, Warning } from "../interfaces/tf.plan.interface";
 import { parseResource } from "./utils";
+import * as fs from 'fs';
+import * as path from 'path';
+import { TfViewer } from "./tf.view";
 
+
+export class TerraformChange {
+    name: string;
+    address: string;
+    action: string;
+    before: Map<string, string>;
+    after: Map<string, string>;
+
+
+    constructor(name: string, address: string, action: string, before: Map<string, string>, after: Map<string, string>) {
+        this.name = name;
+        this.address = address;
+        this.action = action;
+        this.before = before;
+        this.after = after;
+    }
+
+    stringify(): string {
+        return JSON.stringify({
+            name: this.name,
+            address: this.address,
+            action: this.action,
+            before: this.before,
+            after: this.after,
+        });
+    }
+}
+
+
+// Define a function to recursively convert your Map to a JSON object
+function mapToJson(map: Map<any, any>): any {
+    const obj: { [key: string]: any } = {};
+    map.forEach((value, key) => {
+        if (value instanceof Map) {
+            obj[key] = mapToJson(value);
+        } else {
+            obj[key] = value;
+        }
+    });
+    return obj;
+}
+
+
+export type MyListType = Array<TerraformChange>;
 export class TfPlanner {
 
-    public static extractPlanConfigs = (planOutput: string) => {
-        // const regex = /Terraform will perform the following actions:\n([\\s\\S]+?)\nPlan: \d+ changes/;
-        // const plan = regex.exec(planOutput);
-        var plan = this.getPlan(planOutput);
-        // console.log(plan);
-        var parsedRes = parseResource(plan);
-        console.log(parsedRes);
+    public static extractPlanConfigs = (planOutput: any) => {
+        // Parse the JSON data
 
-        // const getWarnings = this.getWarnings(planOutput);
-        // const getPlan = this.getPlan(planOutput);
-        // const getChanges = this.getChanges(getPlan);
-        // console.log(getChanges);
-        // console.log(getWarnings);
-        // console.log(getPlan);
-        // var plan: Plan = { warnings: getWarnings, actions: [] };
-        // for (var i = 0; i < getChanges.length; i++) {
-        //     plan.actions.push(this.parseChange(getChanges[i]));
-        // }
-        // return plan;
+        const myList: MyListType = [];
+
+        let outputMap = new Map<string, MyListType>();
+
+        const terraformJson = JSON.parse(planOutput);
+        const resourceChangesList = terraformJson['resource_changes'];
+
+        for (var myResource of resourceChangesList) {
+            if (outputMap.has(myResource.type)) {
+                var list = outputMap.get(myResource.type);
+                if (list !== null) {
+                    var before;
+                    if (myResource.change.before === null) {
+                        before = {};
+                    } else {
+                        before = myResource.change.before;
+                    }
+                    var after;
+                    if (myResource.change.after === null) {
+                        after = {};
+                    } else {
+                        after = myResource.change.after;
+                    }
+
+                    var shortMap: TerraformChange =
+                        new TerraformChange
+                            (myResource.name, myResource.address,
+                                myResource.change['actions'][0], before, after);
+                    list!.push(
+                        shortMap
+                    );
+
+                    outputMap.set(myResource.type, list!);
+                }
+            } else {
+                outputMap.set(myResource.type, []);
+            }
+        }
+
+        //console.log(outputMap);
+
+        outputMap.forEach((value, key) => {
+            if (value.length === 0) {
+                outputMap.delete(key);
+            }
+        });
+
+        TfViewer.showView(outputMap);
+
+
+        // convert the map to a plain object
+        // Convert Map to JSON string
+        const jsonString = JSON.stringify(mapToJson(outputMap));
+        // get the path to your home directory
+        const homeDir = require('os').homedir();
+        // write the object to a JSON file
+        const jsonPath = path.join(homeDir, 'data.json');
+        fs.writeFileSync(jsonPath, jsonString);
+
+        console.log(outputMap);
+
+        //TfViewer.showView(outputMap);
+
+
+
     };
+
+    // public static extractPlanConfigs = (planOutput: string) => {
+    //     // const regex = /Terraform will perform the following actions:\n([\\s\\S]+?)\nPlan: \d+ changes/;
+    //     // const plan = regex.exec(planOutput);
+    //     var plan = this.getPlan(planOutput);
+    //     // console.log(plan);
+    //     var parsedRes = parseResource(plan);
+    //     console.log(parsedRes);
+
+    //     // const getWarnings = this.getWarnings(planOutput);
+    //     // const getPlan = this.getPlan(planOutput);
+    //     // const getChanges = this.getChanges(getPlan);
+    //     // console.log(getChanges);
+    //     // console.log(getWarnings);
+    //     // console.log(getPlan);
+    //     // var plan: Plan = { warnings: getWarnings, actions: [] };
+    //     // for (var i = 0; i < getChanges.length; i++) {
+    //     //     plan.actions.push(this.parseChange(getChanges[i]));
+    //     // }
+    //     // return plan;
+    // };
 
     private static getPlan(planOutput: string): string {
         const identifier = 'Terraform will perform the following actions:';

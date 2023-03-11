@@ -16,7 +16,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		const _terraform: Terraform = new Terraform(context);
 		await _serverpod.init();
 		// read a file in the current workspace
-		var file = await readFile(join('', 'Users', 'mr.minnu', 'serverpod_ext', 'src', 'file.txt'), 'utf8');
+		var file = await readFile(join('', 'Users', 'ajaylee', 'serverpod_ext', 'src', 'out.json'), 'utf8');
 		var a = TfPlanner.extractPlanConfigs(file);
 		logger.info('Congratulations, your extension \'serverpod\' is now active!');
 		const disposableCreate: vscode.Disposable = vscode.commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());

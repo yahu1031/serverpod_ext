@@ -162,15 +162,34 @@ export class TfViewer {
                 var headerCell = headerRow.insertCell(-1);
                 headerCell.innerHTML = key;
             }
-
-            // Create a row for each object in the JSON data
-            for (var i = 0; i < data.length; i++) {
-                var dataRow = table.insertRow(-1);
-                for (var key in data[i]) {
+            
+            if(data.length>0){
+                // Create a row for each object in the JSON data
+                for (var i = 0; i < data.length; i++) {
+                    var dataRow = table.insertRow(-1);
+                    for (var key in data[i]) {
                     var dataCell = dataRow.insertCell(-1);
                     var dataType = data[i][key];
-                    dataCell.innerHTML = data[i][key];
+                    if(dataType instanceof Object  && Array.isArray(dataType) ){
+                        dataType.forEach((item)=>{
+                            if(item instanceof Object && !Array.isArray(item)){
+                                let table = getHtmlTableForData(dataType);
+                                dataCell.appendChild(table);
+                            }else{
+                                dataCell.innerHTML = dataType;
+                            }
+                            
+                        });
+                    }else{
+
+                        dataCell.innerHTML = data[i][key];
+                    }
                 }
+            }
+            }else{
+                var dataRow = table.insertRow(-1);
+                var dataCell = dataRow.insertCell(-1);
+                dataCell.innerHTML = "Empty";
             }
             
         } else {

@@ -161,8 +161,6 @@ export class TfViewer {
             cell.removeChild(cell.getElementsByTagName("table")[0]);
             cell.innerText="Click To Expand";
             return;
-        } else {
-            // TODO: Collapse the cell
         }
 
         var table = document.createElement("table");
@@ -183,11 +181,15 @@ export class TfViewer {
                     dataCell.innerHTML = data[i][key];
                 }
             }
-            cell.innerText="";
-            cell.appendChild(table);
+            
         } else {
-            cell.innerText = data;
+            var headerRow = table.insertRow(0);
+            var headerCell = headerRow.insertCell(-1);
+            headerCell.innerHTML = data;
         }
+        
+        cell.innerText="";
+        cell.appendChild(table);
 
         let isExpanded = row.classList.contains('expanded');
         row.classList.toggle('expanded');

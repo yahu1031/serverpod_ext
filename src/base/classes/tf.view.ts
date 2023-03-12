@@ -65,7 +65,7 @@ function getUpdatedValues(before: Record<string, any>, after: Record<string, any
 }
 
 
-function beforeTable(obj: any): String {
+function beforeTable(itemAddress: string, obj: any): String {
 
     const myMap = new Map(Object.entries(obj));
 
@@ -74,7 +74,7 @@ function beforeTable(obj: any): String {
         table1 += `<tr><td>No Existing Resource</td></tr>`;
     } else {
         myMap.forEach((val, key) => {
-            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td id=${key}
+            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td id=${key + itemAddress}
             data-row='${JSON.stringify(
                 val
             )}' onclick="expandCell(this)" >Click To Expand</td></tr>`;
@@ -113,7 +113,7 @@ export class TfViewer {
                 <td> ${item.name} </td>
                 <td> ${item.address} </td>
                 <td> ${item.action} </td>
-                <td> ${beforeTable(getUpdatedValues(item.before, item.after))} </td>
+                <td> ${beforeTable(item.address, getUpdatedValues(item.before, item.after))} </td>
             </tr>
             `;
             });
@@ -150,18 +150,8 @@ export class TfViewer {
 
 
     <script>
-      function expandCell(cell) {
 
-        let id = cell.id;
-        let data = JSON.parse(cell.dataset.row);
-        
-        var cell = document.getElementById(id);
-			
-        if (cell.getElementsByTagName("table").length > 0) {
-            cell.removeChild(cell.getElementsByTagName("table")[0]);
-            cell.innerText="Click To Expand";
-            return;
-        }
+      function getHtmlTableForData(data){
 
         var table = document.createElement("table");
 
@@ -178,6 +168,7 @@ export class TfViewer {
                 var dataRow = table.insertRow(-1);
                 for (var key in data[i]) {
                     var dataCell = dataRow.insertCell(-1);
+                    var dataType = data[i][key];
                     dataCell.innerHTML = data[i][key];
                 }
             }
@@ -187,6 +178,24 @@ export class TfViewer {
             var headerCell = headerRow.insertCell(-1);
             headerCell.innerHTML = data;
         }
+        
+        return table;
+
+      }
+      function expandCell(cell) {
+
+        let id = cell.id;
+        let data = JSON.parse(cell.dataset.row);
+        
+        var cell = document.getElementById(id);
+			
+        if (cell.getElementsByTagName("table").length > 0) {
+            cell.removeChild(cell.getElementsByTagName("table")[0]);
+            cell.innerText="Click To Expand";
+            return;
+        }
+
+        let table = getHtmlTableForData(data);
         
         cell.innerText="";
         cell.appendChild(table);

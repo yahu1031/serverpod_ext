@@ -65,7 +65,7 @@ function getUpdatedValues(before: Record<string, any>, after: Record<string, any
 }
 
 
-function beforeTable(obj: any): String {
+function beforeTable(itemAddress: string, obj: any): String {
 
     const myMap = new Map(Object.entries(obj));
 
@@ -74,7 +74,7 @@ function beforeTable(obj: any): String {
         table1 += `<tr><td>No Existing Resource</td></tr>`;
     } else {
         myMap.forEach((val, key) => {
-            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td id=${key}
+            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td id=${key + itemAddress}
             data-row='${JSON.stringify(
                 val
             )}' onclick="expandCell(this)" >Click To Expand</td></tr>`;
@@ -113,7 +113,7 @@ export class TfViewer {
                 <td> ${item.name} </td>
                 <td> ${item.address} </td>
                 <td> ${item.action} </td>
-                <td> ${beforeTable(getUpdatedValues(item.before, item.after))} </td>
+                <td> ${beforeTable(item.address, getUpdatedValues(item.before, item.after))} </td>
             </tr>
             `;
             });
@@ -150,6 +150,57 @@ export class TfViewer {
 
 
     <script>
+
+      function getHtmlTableForData(data){
+
+        var table = document.createElement("table");
+
+        // Create a header row
+        var headerRow = table.insertRow(0);
+        if(typeof data !== 'string') {
+            for (var key in data[0]) {
+                var headerCell = headerRow.insertCell(-1);
+                headerCell.innerHTML = key;
+            }
+            
+            if(data.length>0){
+                // Create a row for each object in the JSON data
+                for (var i = 0; i < data.length; i++) {
+                    var dataRow = table.insertRow(-1);
+                    for (var key in data[i]) {
+                    var dataCell = dataRow.insertCell(-1);
+                    var dataType = data[i][key];
+                    if(dataType instanceof Object  && Array.isArray(dataType) ){
+                        dataType.forEach((item)=>{
+                            if(item instanceof Object && !Array.isArray(item)){
+                                let table = getHtmlTableForData(dataType);
+                                dataCell.appendChild(table);
+                            }else{
+                                dataCell.innerHTML = dataType;
+                            }
+                            
+                        });
+                    }else{
+
+                        dataCell.innerHTML = data[i][key];
+                    }
+                }
+            }
+            }else{
+                var dataRow = table.insertRow(-1);
+                var dataCell = dataRow.insertCell(-1);
+                dataCell.innerHTML = "Empty";
+            }
+            
+        } else {
+            var headerRow = table.insertRow(0);
+            var headerCell = headerRow.insertCell(-1);
+            headerCell.innerHTML = data;
+        }
+        
+        return table;
+
+      }
       function expandCell(cell) {
 
         let id = cell.id;
@@ -163,30 +214,7 @@ export class TfViewer {
             return;
         }
 
-        var table = document.createElement("table");
-
-        // Create a header row
-        var headerRow = table.insertRow(0);
-        if(typeof data !== 'string') {
-            for (var key in data[0]) {
-                var headerCell = headerRow.insertCell(-1);
-                headerCell.innerHTML = key;
-            }
-
-            // Create a row for each object in the JSON data
-            for (var i = 0; i < data.length; i++) {
-                var dataRow = table.insertRow(-1);
-                for (var key in data[i]) {
-                    var dataCell = dataRow.insertCell(-1);
-                    dataCell.innerHTML = data[i][key];
-                }
-            }
-            
-        } else {
-            var headerRow = table.insertRow(0);
-            var headerCell = headerRow.insertCell(-1);
-            headerCell.innerHTML = data;
-        }
+        let table = getHtmlTableForData(data);
         
         cell.innerText="";
         cell.appendChild(table);

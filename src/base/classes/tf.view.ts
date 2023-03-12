@@ -1,5 +1,6 @@
 
 import * as vscode from 'vscode';
+
 import { MyListType, TerraformChange } from './tf.plan.class';
 
 const panel = vscode.window.createWebviewPanel(
@@ -73,7 +74,7 @@ function beforeTable(obj: any): String {
         table1 += `<tr><td>No Existing Resource</td></tr>`;
     } else {
         myMap.forEach((val, key) => {
-            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td
+            table1 += `<tr border-bottom: 1pt solid white;><td >${key}</td><td id=${key}
             data-row='${JSON.stringify(
                 val
             )}' onclick="expandCell(this)" >Click To Expand</td></tr>`;
@@ -83,16 +84,6 @@ function beforeTable(obj: any): String {
     var table = table1 += `</table`;
     return table;
 }
-
-function createHeader(header: String) {
-    return `
-    <tr>
-        <td>${header}</td>
-    </tr>
-    `;
-}
-
-
 
 export class TfViewer {
 
@@ -107,9 +98,6 @@ export class TfViewer {
             <tr style="border: 1px solid gray; padding: 8px; text-align: left; background-color: lightgray; color: black;">
                 <td> ${key} </td>
             </tr>
-            <tr><td></td></tr>
-            <tr><td></td></tr>
-            <tr><td></td></tr>
             `;
 
             table1 += `
@@ -122,30 +110,31 @@ export class TfViewer {
             val.forEach((item) => {
                 table1 += `
             <tr>
-                <td style="border: 1px solid gray; padding: 8px; text-align: left;"> ${item.name} </td>
-                <td style="border: 1px solid gray; padding: 8px; text-align: left;"> ${item.address} </td>
-                <td style="border: 1px solid gray; padding: 8px; text-align: left;"> ${item.action} </td>
-                <td style="border: 1px solid gray; padding: 8px; text-align: left;"> ${beforeTable(getUpdatedValues(item.before, item.after))} </td>
+                <td> ${item.name} </td>
+                <td> ${item.address} </td>
+                <td> ${item.action} </td>
+                <td> ${beforeTable(getUpdatedValues(item.before, item.after))} </td>
             </tr>
-            <tr><td></td></tr>
-            <tr><td></td></tr>
-            <tr><td></td></tr>
             `;
             });
         });
 
         var table = table1 += `</table>`;
-        panel.webview.html = ` 
+
+        let myHtml = ` 
         
     <style>
       table {
         border-collapse: collapse;
         width: 100%;
+        padding: 5px;
+        border: 1px solid black;
       }
 
       th, td {
         padding: 8px;
         text-align: left;
+        border: 1px solid gray;
       }
 
       tr.expanded td {
@@ -162,18 +151,40 @@ export class TfViewer {
 
     <script>
       function expandCell(cell) {
-        let mapObj = JSON.parse(cell.dataset.row);
+
+        let id = cell.id;
+
+        let data = JSON.parse(cell.dataset.row);
         
-        let stringObj = JSON.stringify(mapObj);
-
-
-        if(cell.innerText === "Click To Expand"){
-            cell.innerText = stringObj; 
-        }else{
-            cell.innerText = "Click To Expand";
+        var cell = document.getElementById(id);
+			
+        if (cell.getElementsByTagName("table").length > 0) {
+            cell.removeChild(cell.getElementsByTagName("table")[0]);
+            cell.innerText="Click To Expand";
+            return;
         }
 
-        let row = cell.parentNode;
+        var table = document.createElement("table");
+
+            // Create a header row
+			var headerRow = table.insertRow(0);
+			for (var key in data[0]) {
+				var headerCell = headerRow.insertCell(-1);
+				headerCell.innerHTML = key;
+			}
+
+			// Create a row for each object in the JSON data
+			for (var i = 0; i < data.length; i++) {
+				var dataRow = table.insertRow(-1);
+				for (var key in data[i]) {
+					var dataCell = dataRow.insertCell(-1);
+					dataCell.innerHTML = data[i][key];
+				}
+			}
+
+            cell.innerText="";
+            cell.appendChild(table);
+
         let isExpanded = row.classList.contains('expanded');
         row.classList.toggle('expanded');
         row.style.height = isExpanded ? '' : (row.offsetHeight * 2) + 'px';
@@ -181,11 +192,10 @@ export class TfViewer {
     </script>
         
         `;
-
+        let htmlContent = `<html><body> ${myHtml} </body></html>`;
+        panel.webview.html = htmlContent;
     };
 }
-
-
 
 export function activate(context: vscode.ExtensionContext) {
     const command = vscode.commands.registerCommand('extension.openTableView', () => {

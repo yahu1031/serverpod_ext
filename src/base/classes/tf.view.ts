@@ -1,7 +1,7 @@
 
 import * as vscode from 'vscode';
 
-import { MyListType, TerraformChange } from './tf.plan.class';
+import { MyListType } from './tf.plan.class';
 
 const panel = vscode.window.createWebviewPanel(
     'tableView',
@@ -153,7 +153,6 @@ export class TfViewer {
       function expandCell(cell) {
 
         let id = cell.id;
-
         let data = JSON.parse(cell.dataset.row);
         
         var cell = document.getElementById(id);
@@ -162,28 +161,33 @@ export class TfViewer {
             cell.removeChild(cell.getElementsByTagName("table")[0]);
             cell.innerText="Click To Expand";
             return;
+        } else {
+            // TODO: Collapse the cell
         }
 
         var table = document.createElement("table");
 
-            // Create a header row
-			var headerRow = table.insertRow(0);
-			for (var key in data[0]) {
-				var headerCell = headerRow.insertCell(-1);
-				headerCell.innerHTML = key;
-			}
+        // Create a header row
+        var headerRow = table.insertRow(0);
+        if(typeof data !== 'string') {
+            for (var key in data[0]) {
+                var headerCell = headerRow.insertCell(-1);
+                headerCell.innerHTML = key;
+            }
 
-			// Create a row for each object in the JSON data
-			for (var i = 0; i < data.length; i++) {
-				var dataRow = table.insertRow(-1);
-				for (var key in data[i]) {
-					var dataCell = dataRow.insertCell(-1);
-					dataCell.innerHTML = data[i][key];
-				}
-			}
-
+            // Create a row for each object in the JSON data
+            for (var i = 0; i < data.length; i++) {
+                var dataRow = table.insertRow(-1);
+                for (var key in data[i]) {
+                    var dataCell = dataRow.insertCell(-1);
+                    dataCell.innerHTML = data[i][key];
+                }
+            }
             cell.innerText="";
             cell.appendChild(table);
+        } else {
+            cell.innerText = data;
+        }
 
         let isExpanded = row.classList.contains('expanded');
         row.classList.toggle('expanded');

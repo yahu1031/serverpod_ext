@@ -122,7 +122,7 @@ export class TfPlanner {
         const jsonPath = path.join(homeDir, 'data.json');
         fs.writeFileSync(jsonPath, jsonString);
 
-        console.log(outputMap);
+        // console.log(outputMap);
 
         //TfViewer.showView(outputMap);
 

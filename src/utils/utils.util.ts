@@ -4,6 +4,8 @@ import * as os from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
 import { Constants } from './constants.util';
+import { LogCategory } from './enums.util';
+import { ExtLogger } from './logger.util';
 
 export class Utils {
 
@@ -62,7 +64,7 @@ export class Utils {
      * @returns the error message if the name is not valid or already exists
      * */
     static killPid(pid: string): string {
-        console.log("Killing PID " + pid);
+        new ExtLogger(LogCategory.extension).warn("🚩 Killing PID " + pid);
         if (Constants.isWindows) {
             return execSync(`taskkill /F /PID ${pid}`, { encoding: "utf-8" });
         } else {

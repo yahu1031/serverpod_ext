@@ -2,6 +2,10 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## 🚀 Release - 1.0.0
+
+- Added logger support.
+
 ## 🚀 Pre-Release - 0.2.2
 
 - Updated Code snippets.

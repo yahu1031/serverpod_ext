@@ -1,10 +1,10 @@
 export enum LogCategory {
-    serverpod = 'SERVERPOD',
-    flutter = 'FLUTTER',
-    dart = 'DART',
-    utils = 'UTILS',
-    terraform = 'TERRAFORM',
-    extension = 'EXTENSION',
+    serverpod = 'Serverpod',
+    flutter = 'Flutter',
+    dart = 'Dart',
+    utils = 'Utils',
+    terraform = 'Terraform',
+    extension = 'Extension',
 }
 
 

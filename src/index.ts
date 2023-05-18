@@ -10,7 +10,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	try {
 		const _serverpod: Serverpod = new Serverpod(context);
 		await _serverpod.init();
-		logger.info('🎉 Congratulations, your extension \'serverpod\' is now active!');
+		logger.info('activate', '🎉 Congratulations, your extension \'serverpod\' is now active!');
 		const disposableCreate: vscode.Disposable = vscode.commands.registerCommand(Constants.createCommand, async () => await _serverpod.createServerpodFlutterProject());
 		const disposableGenerate: vscode.Disposable = vscode.commands.registerCommand(Constants.generateCommand, async () => await _serverpod.generateServerpodCode());
 		const disposableServe: vscode.Disposable = vscode.commands.registerCommand(Constants.serveCommand, async () => await _serverpod.startServerpodServer());
@@ -36,7 +36,7 @@ export async function deactivate(context: vscode.ExtensionContext): Promise<void
 	_serverpod.stopServer();
 	_serverpod.stopGenerating();
 	context.subscriptions.forEach((subscription: vscode.Disposable) => {
-		logger.info('🗑️ Disposing ' + subscription);
+		logger.info('deactivate', '🗑️ Disposing ' + subscription);
 	});
-	logger.info('💀 Your extension \'serverpod\' is now deactivated!');
+	logger.info('deactivate', '💀 Your extension \'serverpod\' is now deactivated!');
 }

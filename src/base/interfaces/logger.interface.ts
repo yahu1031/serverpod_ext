@@ -1,9 +1,9 @@
 import { LogCategory, LogSeverity } from "../../utils/enums.util";
 
 export interface Logger {
-    info(message: string, category?: LogCategory): void;
-    warn(message: any, category?: LogCategory): void;
-    error(error: any, category?: LogCategory): void;
+    info(loggerTag: string, message: string, category?: LogCategory): void;
+    warn(loggerTag: string, message: any, category?: LogCategory): void;
+    error(loggerTag: string, error: any, category?: LogCategory): void;
 }
 
 export interface LogMessage {

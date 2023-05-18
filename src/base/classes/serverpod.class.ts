@@ -144,90 +144,109 @@ export class Serverpod implements ServerpodInterface {
                 this._channel = Constants.channel;
             }
             this._channel.show();
-            await vscode.window.withProgress({
-                title: "Serverpod",
-                location: vscode.ProgressLocation.Notification,
-                cancellable: false,
-            }, async (progress, _token) => {
-                progress.report({ message: 'Creating project...' });
-                const p = await new Promise<void>(async (resolve, reject) => {
-                    let _dockerExists: boolean = false;
-                    spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
-                        _dockerExists = code === 0;
-                        if (_dockerExists) {
-                            this.logger.info('🐳 Docker found');
-                        }
-                        else {
-                            this.logger.error('🐳 Docker not found. Please install docker to continue.');
-                            await vscode.window.showErrorMessage('Docker not found. Please install docker to continue.');
-                            _isError = true;
-                        }
-                    });
-                    const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: false });
-                    newProjSpawn.stdout.on('data', async (data) => {
-                        if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
-                            this._channel?.hide();
-                            _isError = true;
-                            const dockerErrorOption: string[] = [_dockerExists ? 'Continue' : 'Install', _dockerExists ? 'Cancel' : 'continue'];
-                            vscode.window.showWarningMessage(_dockerExists ? 'Docker is not running. Please start docker and try again.' : 'Looks like you didn\'t install docker.', ...dockerErrorOption).then(async (value) => {
-                                if (!_dockerExists && value === dockerErrorOption[0]) {
-                                    const _opened = await vscode.env.openExternal(vscode.Uri.parse('https://www.docker.com/get-started'));
-                                    _opened ? this.logger.info('🐳 Opened https://www.docker.com/get-started') : this.logger.error('🐳 Failed to open https://www.docker.com/get-started');
-                                    resolve();
-                                } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
-                                    _isError = true;
-                                    process.kill(-newProjSpawn.pid);
-                                    newProjSpawn.kill('SIGKILL');
-                                    await this.createServerpodFlutterProject(true).then(() => {
-                                        console.warn('Force flag is used');
-                                        resolve();
-                                    }, () => {
-                                        _isError = true;
-                                        reject();
-                                    });
-                                    resolve();
-                                } else if (!_dockerExists && value === dockerErrorOption[1]) {
-                                    _isError = true;
-                                    newProjSpawn.kill('SIGKILL');
-                                    this._channel?.hide();
-                                    resolve();
-                                }
-                            });
-                            resolve();
-                        }
-                        this._channel?.append(data.toString());
-                    });
-                    newProjSpawn.stdout.on('close', async () => {
-                        this.logger.error(`💔 serverpod project creation closed with ${_isError}`);
-                        resolve();
-                    });
-                    newProjSpawn.stderr.on('error', async (err) => {
-                        this.logger.error(`💔 ${err}`);
-                        this._channel?.append(err.toString());
+            const cancellationTokenSource = new vscode.CancellationTokenSource();
+            try {
+                await vscode.window.withProgress({
+                    title: "Serverpod",
+                    location: vscode.ProgressLocation.Notification,
+                    cancellable: false,
+                }, async (progress, _token) => {
+                    _token.onCancellationRequested(() => {
                         this._channel?.hide();
-                        reject();
+                        cancellationTokenSource.cancel();
                     });
-                });
-                return p;
-            }).then(async () => {
-                if (!_isError && existsSync(join(_path, _name!))) {
-                    this.logger.info('✅ serverpod project created');
-                    this._channel?.appendLine('Project created successfully');
-                    this.logger.info(join(_path, _name!));
-                    setTimeout(async () => {
-                        await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(join(_path, _name!)));
-                    }, 100);
-                } else {
-                    this.logger.error('💔 Project creation failed');
+                    progress.report({ message: 'Creating project...' });
+                    const p = await new Promise<void>(async (resolve, reject) => {
+                        let _dockerExists: boolean = false;
+                        spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
+                            _dockerExists = code === 0;
+                            if (_dockerExists) {
+                                this.logger.info('createServerpodFlutterProject', '🐳 Docker found');
+                                // check if docker is running
+                                if (!Utils.isDockerRunning) {
+                                    // await vscode.window.showErrorMessage('🐳 Docker is not running. Please start docker and try again.');
+                                    _isError = true;
+                                    reject(new Error('Docker is not running. Please start docker and try again.'));
+                                }
+                            }
+                            else {
+                                this.logger.error('createServerpodFlutterProject', '🐳 Docker not found. Please install docker to continue.');
+                                _isError = true;
+                            }
+                        });
+                        const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: false });
+                        newProjSpawn.stdout.on('data', async (data) => {
+                            if (!force && data.toString().includes('You can still create this project by passing -f to "serverpod create".')) {
+                                // this._channel?.hide();
+                                _isError = true;
+                                const dockerErrorOption: string[] = [_dockerExists ? 'Continue' : 'Install', _dockerExists ? 'Cancel' : 'continue'];
+                                vscode.window.showWarningMessage(_dockerExists ? 'Docker is not running. Please start docker and try again.' : 'Looks like you didn\'t install docker.', ...dockerErrorOption).then(async (value) => {
+                                    if (!_dockerExists && value === dockerErrorOption[0]) {
+                                        const _opened = await vscode.env.openExternal(vscode.Uri.parse('https://www.docker.com/get-started'));
+                                        _opened ? this.logger.info('createServerpodFlutterProject', '🐳 Opened https://www.docker.com/get-started') : this.logger.error('createServerpodFlutterProject', '🐳 Failed to open https://www.docker.com/get-started');
+                                        resolve();
+                                    } else if ((_dockerExists && value === dockerErrorOption[0]) || (!_dockerExists && dockerErrorOption[1])) {
+                                        _isError = true;
+                                        process.kill(-newProjSpawn.pid);
+                                        newProjSpawn.kill('SIGKILL');
+                                        await this.createServerpodFlutterProject(true).then(() => {
+                                            console.warn('Force flag is used');
+                                            resolve();
+                                        }, () => {
+                                            _isError = true;
+                                            reject();
+                                        });
+                                        resolve();
+                                    } else if (!_dockerExists && value === dockerErrorOption[1]) {
+                                        _isError = true;
+                                        newProjSpawn.kill('SIGKILL');
+                                        this._channel?.hide();
+                                        resolve();
+                                    }
+                                });
+                                resolve();
+                            }
+                            this._channel?.append(data.toString());
+                        });
+                        newProjSpawn.stdout.on('close', async () => {
+                            this._channel?.hide();
+                            resolve();
+                        });
+                        newProjSpawn.stderr.on('error', async (err) => {
+                            this.logger.error('createServerpodFlutterProject', `💔 ${err}`);
+                            this._channel?.append(err.toString());
+                            reject();
+                        });
+                    });
+                    return p;
+                }).then(async () => {
+                    if (!_isError && existsSync(join(_path, _name!))) {
+                        this.logger.info('createServerpodFlutterProject', '✅ serverpod project created');
+                        this._channel?.appendLine('Project created successfully');
+                        this.logger.info('createServerpodFlutterProject', join(_path, _name!));
+                        setTimeout(async () => {
+                            await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(join(_path, _name!)));
+                        }, 100);
+                    } else {
+                        this.logger.error('createServerpodFlutterProject', '💔 Project creation failed');
+                        this._channel?.appendLine('Project creation failed');
+                    }
+                    return Promise.resolve();
+                }, async (res) => {
+                    this._channel?.hide();
+                    cancellationTokenSource.cancel();
+                    this.logger.error('createServerpodFlutterProject', '💔 Project creation failed');
                     this._channel?.appendLine('Project creation failed');
-                }
-                return Promise.resolve();
-            }, () => {
-                this.logger.error('💔 Project creation failed');
-                this._channel?.appendLine('Project creation failed');
-                vscode.window.showErrorMessage('Project creation failed');
-                return;
-            });
+                    await vscode.window.showErrorMessage(res.message, 'Open logs').then(async (value) => {
+                        if (value === 'Open logs') {
+                            this._channel?.show();
+                        }
+                    });
+                    return;
+                });
+            } catch (error) {
+                this.logger.error('createServerpodFlutterProject', `💔 ${error}`);
+            }
             return;
         }
     }
@@ -238,16 +257,22 @@ export class Serverpod implements ServerpodInterface {
      * Starts the serverpod server
      * */
     async startServerpodServer(): Promise<void> {
-        this.logger.info('🌐 Starting serverpod server ...');
+        this.logger.info('startServerpodServer', '🌐 Starting serverpod server ...');
         if (!this.projPath) {
-            this.logger.error('💔 Not a serverpod project');
+            this.logger.error('startServerpodServer', '💔 Not a serverpod project');
             await vscode.window.showErrorMessage('Not a serverpod project');
             return;
         }
         var projNameSplitList = new Utils(this.context).projectPath?.uri.path.split(sep);
         if (!projNameSplitList) {
-            this.logger.error('💔 Not a serverpod project');
+            this.logger.error('startServerpodServer', '💔 Not a serverpod project');
             await vscode.window.showErrorMessage('Not a serverpod project');
+            return;
+        }
+        var containerRunning = Utils.isContainerRunning(projNameSplitList[projNameSplitList.length - 1]);
+        if (!containerRunning) {
+            this.logger.warn('startServerpodServer', '💔 Serverpod server is not running');
+            await vscode.window.showWarningMessage('Can\'t start serverpod server. Did you forget to run Docker?');
             return;
         }
         if (this._utils.serverPath || this.projPath) {
@@ -280,7 +305,7 @@ export class Serverpod implements ServerpodInterface {
                 _generateSpawn = undefined;
             }
             if (_generateSpawn) {
-                this.logger.warn('🚩 Killing generate spawn');
+                this.logger.warn('stopGenerating', '🚩 Killing generate spawn');
                 process.kill(-_generateSpawn.pid, 'SIGKILL');
             }
             return true;
@@ -430,12 +455,12 @@ export class Serverpod implements ServerpodInterface {
         envPath.forEach(_p => {
             if (_p.endsWith(join('flutter', 'bin')) || _p.endsWith(join('flutter', 'bin', sep))) {
                 this._flutter.setFlutterPath = _p;
-                this.logger.info(`🩵 Flutter path: ${_p}`);
+                this.logger.info('init', `🩵 Flutter path: ${_p}`);
                 this._flutter.setDartPath = join(_p, 'cache', 'dart-sdk');
-                this.logger.info(`💙 Dart path: ${this._flutter.dartPath}`);
+                this.logger.info('init', `💙 Dart path: ${this._flutter.dartPath}`);
             }
             if (Constants.isWindows ? _p.includes(join('pub', 'cache')) : _p.includes('.pub-cache')) {
-                this.logger.info(`🧡 Pub cache path: ${_p}`);
+                this.logger.info('init', `🧡 Pub cache path: ${_p}`);
                 this._flutter.setPubCachePath = _p;
             }
         });

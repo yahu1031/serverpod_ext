@@ -2,7 +2,7 @@
 	"name": "serverpod",
 	"displayName": "Serverpod",
 	"description": "Serverpod extension makes your development easy on serverpod apps.",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"publisher": "minnu1031",
 	"license": "BSD-3-Clause",
 	"repository": {

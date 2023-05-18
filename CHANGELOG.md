@@ -2,6 +2,11 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## 🚀 Release - 1.0.1
+
+- Fixed a bug where it keeps looping in creating a project.
+- Enhanced the server start/stop actions.
+
 ## 🚀 Release - 1.0.0
 
 - Added logger support.

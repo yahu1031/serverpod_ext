@@ -5,7 +5,9 @@ import { Constants } from './utils/constants.util';
 import { LogCategory } from './utils/enums.util';
 import { ExtLogger } from './utils/logger.util';
 
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+	
 	const logger: ExtLogger = new ExtLogger(LogCategory.extension);
 	try {
 		const _serverpod: Serverpod = new Serverpod(context);

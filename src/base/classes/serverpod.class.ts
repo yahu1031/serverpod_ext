@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
 import * as vscode from 'vscode';
+import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node';
 import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
 import { LogCategory } from '../../utils/enums.util';
@@ -18,6 +19,12 @@ export class Serverpod implements ServerpodInterface {
      * Private ExtensionContext
      */
     private context: vscode.ExtensionContext;
+
+    /**
+     * Private LanguageClient
+     * */
+    private client: LanguageClient | undefined;
+
 
     private logger: ExtLogger = new ExtLogger(LogCategory.serverpod);
 
@@ -48,6 +55,38 @@ export class Serverpod implements ServerpodInterface {
      * {@link Constants.channel | Serverpod channel} private variable
      * */
     private _channel: vscode.OutputChannel | undefined;
+
+    /**
+     * Starts the serverpod's LSP.
+     * 
+     * For more info about LSP, see {@link https://code.visualstudio.com/api/language-extensions/language-server-extension-guide | VSCode LSP}
+     * */
+    async startLSP(): Promise<void> {
+        const serverOptions: ServerOptions = {
+            command: 'serverpod',
+            args: ['language-server', '--no-development-print'],
+            options: {},
+            transport: TransportKind.stdio
+        };
+
+        const clientOptions: LanguageClientOptions = {
+            revealOutputChannelOn: RevealOutputChannelOn.Info,
+            documentSelector: [
+                { scheme: 'file', language: 'yaml', pattern: '**/protocol/**/*.yaml' },
+                { scheme: 'file', pattern: '**/*.sp.yaml' },
+            ],
+        };
+
+        this.client = new LanguageClient(
+            'serverpodLanguageServer',
+            'Serverpod',
+            serverOptions,
+            clientOptions
+        );
+        if (this.client) {
+            await this.client.start();
+        }
+    }
 
     /**
      * Generates the Endpoints and client code for the serverpod project
@@ -474,13 +513,18 @@ export class Serverpod implements ServerpodInterface {
                 this.setServerpodPath = this._flutter.pubCachePath!;
             }
         }
+
+        /**
+         * Start the serverpod LSP
+         * */
+        await this.startLSP();
     }
 
     /**
      * Listen to debug events
      * */
     public listenToDebugEvents(): void {
-        var a = vscode.debug.onDidChangeActiveDebugSession(async (session) => {
+        vscode.debug.onDidChangeActiveDebugSession(async (session) => {
             if (session && session.configuration && session.configuration.cwd.endsWith('_server')) {
                 await vscode.commands.executeCommand('setContext', 'serverpod.serving', true);
                 await this.context.globalState.update('serverpod.serving', true);

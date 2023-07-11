@@ -83,7 +83,7 @@ export class Serverpod implements ServerpodInterface {
             serverOptions,
             clientOptions
         );
-        if (this.client) {
+        if (this.client && this.projPath) {
             await this.client.start();
         }
     }
@@ -431,6 +431,8 @@ export class Serverpod implements ServerpodInterface {
                     if (doc.dependencies?.serverpod || doc.dependencies?.serverpod_flutter || doc.dependencies?.serverpod_client) {
                         serverpodProj = folder.uri.fsPath;
                         return Promise.resolve(serverpodProj);
+                    } else {
+                        return Promise.resolve(serverpodProj);
                     }
                 }
                 else if (!dir.startsWith('.')) {
@@ -507,7 +509,7 @@ export class Serverpod implements ServerpodInterface {
         /**
          * Set-up serverpod path
          */
-        if (!this.getServerpodPath) {
+        if (!this.getServerpodPath && this.projPath) {
             const _serverpodPath: string = join(this._flutter.pubCachePath!, Constants.isWindows ? 'serverod.bat' : 'serverpod');
             if (existsSync(_serverpodPath)) {
                 this.setServerpodPath = this._flutter.pubCachePath!;

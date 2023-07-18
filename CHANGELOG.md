@@ -2,6 +2,9 @@
 
 All notable changes to the "Serverpod" extension will be documented in this file.
 
+## 🚀 Release - 1.0.2
+- Fixed a bug where the extension crashes when the serverpod project is not found. [#7(TypeError [ERR_INVALID_ARG_TYPE])](https://github.com/yahu1031/serverpod_ext/issues/7)
+
 ## 🚀 Release - 1.0.1
 
 - Fixed a bug where it keeps looping in creating a project.

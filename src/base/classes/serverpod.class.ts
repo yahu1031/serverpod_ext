@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import { ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
@@ -60,31 +60,44 @@ export class Serverpod implements ServerpodInterface {
      * Starts the serverpod's LSP.
      * 
      * For more info about LSP, see {@link https://code.visualstudio.com/api/language-extensions/language-server-extension-guide | VSCode LSP}
+     * 
+     * This code is based on {@link https://github.com/serverpod/serverpod/blob/main/tools/serverpod_vscode_extension/src/extension.ts | Serverpod LSP extension}
      * */
     async startLSP(): Promise<void> {
-        const serverOptions: ServerOptions = {
-            command: 'serverpod',
-            args: ['language-server', '--no-development-print'],
-            options: {},
-            transport: TransportKind.stdio
-        };
+        try {
+            this.logger.info('startLSP', '🟢 Starting Serverpod LSP');
+            const serverOptions: ServerOptions = {
+                command: Constants.serverpodApp,
+                args: ['language-server', '--no-development-print'],
+                options: {},
+                transport: TransportKind.stdio
+            };
 
-        const clientOptions: LanguageClientOptions = {
-            revealOutputChannelOn: RevealOutputChannelOn.Info,
-            documentSelector: [
-                { scheme: 'file', language: 'yaml', pattern: '**/protocol/**/*.yaml' },
-                { scheme: 'file', pattern: '**/*.sp.yaml' },
-            ],
-        };
+            const clientOptions: LanguageClientOptions = {
+                revealOutputChannelOn: RevealOutputChannelOn.Info,
+                documentSelector: [
+                    { scheme: 'file', language: 'yaml', pattern: '**/protocol/**/*.yaml' },
+                    { scheme: 'file', pattern: '**/*.sp.yaml' },
+                    {
+                        scheme: 'file',
+                        language: 'dart',
+                        pattern: '**/lib/**/*.dart',
+                    }
+                ],
+            };
 
-        this.client = new LanguageClient(
-            'serverpodLanguageServer',
-            'Serverpod',
-            serverOptions,
-            clientOptions
-        );
-        if (this.client && this.projPath) {
-            await this.client.start();
+            this.client = new LanguageClient(
+                'serverpodLanguageServer',
+                'Serverpod',
+                serverOptions,
+                clientOptions,
+                true,
+            );
+            if (this.client && this.projPath) {
+                await this.client.start();
+            }
+        } catch (error) {
+            this.logger.error('startLSP', error);
         }
     }
 
@@ -197,20 +210,31 @@ export class Serverpod implements ServerpodInterface {
                     progress.report({ message: 'Creating project...' });
                     const p = await new Promise<void>(async (resolve, reject) => {
                         let _dockerExists: boolean = false;
-                        spawn('which', ['docker'], { detached: false }).on('close', async (code) => {
-                            _dockerExists = code === 0;
-                            if (_dockerExists) {
-                                this.logger.info('createServerpodFlutterProject', '🐳 Docker found');
-                                // check if docker is running
-                                if (!Utils.isDockerRunning) {
-                                    // await vscode.window.showErrorMessage('🐳 Docker is not running. Please start docker and try again.');
+                        spawn('which', ['docker'], { detached: false })
+                            .on('close', async (code) => {
+                                _dockerExists = code === 0;
+                                if (_dockerExists) {
+                                    this.logger.info('createServerpodFlutterProject', '🐳 Docker found');
+                                    // check if docker is running
+                                    var running = Utils.isDockerRunning;
+                                    if (!running) {
+                                        // await vscode.window.showErrorMessage('🐳 Docker is not running. Please start docker and try again.');
+                                        _isError = true;
+                                        reject(new Error('Docker is not running. Please start docker and try again.'));
+                                    }
+                                } else {
+                                    this.logger.error('createServerpodFlutterProject', '🐳 Docker not found. Please install docker to continue.');
                                     _isError = true;
-                                    reject(new Error('Docker is not running. Please start docker and try again.'));
                                 }
+                            });
+                        exec('serverpod version', { cwd: _path, windowsHide: true }, async (error, stdout, stderr) => {
+                            if (error) {
+                                this.logger.error('createServerpodFlutterProject', `STDERR 🔥: ${stderr}`);
+                                _isError = true;
+                                reject(new Error('Flutter not found. Please install flutter to continue.'));
                             }
                             else {
-                                this.logger.error('createServerpodFlutterProject', '🐳 Docker not found. Please install docker to continue.');
-                                _isError = true;
+                                this.logger.info('createServerpodFlutterProject', `STDOUT 🔥 ${stdout}`);
                             }
                         });
                         const newProjSpawn = spawn(Constants.serverpodApp, cmdArgs, { cwd: _path, detached: false });
@@ -247,7 +271,8 @@ export class Serverpod implements ServerpodInterface {
                             }
                             this._channel?.append(data.toString());
                         });
-                        newProjSpawn.stdout.on('close', async () => {
+                        newProjSpawn.stdout.on('close', async (data: any) => {
+                            this._channel?.appendLine(`Serverpod project creation exited with code ${data}`);
                             this._channel?.hide();
                             resolve();
                         });
@@ -259,7 +284,8 @@ export class Serverpod implements ServerpodInterface {
                     });
                     return p;
                 }).then(async () => {
-                    if (!_isError && existsSync(join(_path, _name!))) {
+                    var pathExists = existsSync(join(_path, _name!));
+                    if (!_isError && pathExists) {
                         this.logger.info('createServerpodFlutterProject', '✅ serverpod project created');
                         this._channel?.appendLine('Project created successfully');
                         this.logger.info('createServerpodFlutterProject', join(_path, _name!));
@@ -441,7 +467,7 @@ export class Serverpod implements ServerpodInterface {
                     var genExists = existsSync(join(folder.uri.fsPath, dir, 'generated'));
                     if (yamlExists && genExists) {
                         const doc: any = parse(readFileSync(_pubspecPath, 'utf8'));
-                        if (doc.dependencies?.serverpod || doc.dependencies?.serverpod_flutter || doc.dependencies?.serverpod_client) {
+                        if (doc.dependencies?.serverpod || doc.dependencies?.serverpod === null || doc.dependencies?.serverpod_flutter || doc.dependencies?.serverpod_flutter === null || doc.dependencies?.serverpod_client || doc.dependencies?.serverpod_client === null) {
                             serverpodProj = join(folder.uri.fsPath, dir);
                         }
                     }

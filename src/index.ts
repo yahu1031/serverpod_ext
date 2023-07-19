@@ -37,8 +37,11 @@ export async function deactivate(context: vscode.ExtensionContext): Promise<void
 	const logger: ExtLogger = new ExtLogger(LogCategory.extension);
 	_serverpod.stopServer();
 	_serverpod.stopGenerating();
-	context.subscriptions.forEach((subscription: vscode.Disposable) => {
-		logger.info('deactivate', '🗑️ Disposing ' + subscription);
-	});
+	if (context.subscriptions && context.subscriptions.length > 0) {
+		context.subscriptions.forEach((subscription: vscode.Disposable) => {
+			logger.info('deactivate', '🗑️ Disposing ' + subscription);
+			subscription.dispose();
+		});
+	}
 	logger.info('deactivate', '💀 Your extension \'serverpod\' is now deactivated!');
 }

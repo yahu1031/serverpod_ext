@@ -39,6 +39,8 @@ export class Constants {
     static readonly envPaths: string[] | undefined = process.env.PATH?.toLowerCase().split(delimiter);
 
     static readonly channel: vscode.OutputChannel = vscode.window.createOutputChannel("Serverpod");
+    static readonly lspchannel: vscode.OutputChannel = vscode.window.createOutputChannel("Serverpod LSP");
+    static readonly lspTracechannel: vscode.OutputChannel = vscode.window.createOutputChannel("Serverpod LSP Trace");
 
     static readonly quickPicks: vscode.QuickPickItem[] = [{
         title: 'Create',

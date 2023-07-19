@@ -1,9 +1,9 @@
-import { ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
+import { ChildProcessByStdio, ChildProcessWithoutNullStreams, exec, spawn } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { readdir } from 'fs/promises';
 import { join, sep } from 'path';
 import * as vscode from 'vscode';
-import { LanguageClient, LanguageClientOptions, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import { LanguageClient, LanguageClientOptions, MessageStrategy, RevealOutputChannelOn, ServerOptions, TransportKind } from 'vscode-languageclient/node';
 import { parse } from 'yaml';
 import { Constants } from '../../utils/constants.util';
 import { LogCategory } from '../../utils/enums.util';
@@ -11,8 +11,9 @@ import { ExtLogger } from '../../utils/logger.util';
 import { Utils } from './../../utils/utils.util';
 import { ServerpodInterface } from './../interfaces/serverpod.interface';
 import { Flutter } from './flutter.class';
+import { Readable } from 'stream';
 
-var _generateSpawn: ChildProcessWithoutNullStreams | undefined;
+var _generateSpawn: ChildProcessWithoutNullStreams | ChildProcessByStdio<null, Readable, Readable> | undefined;
 
 export class Serverpod implements ServerpodInterface {
     /**
@@ -37,7 +38,7 @@ export class Serverpod implements ServerpodInterface {
         this._flutter = new Flutter(context);
     }
 
-    private _generateSpawn: ChildProcessWithoutNullStreams | undefined;
+    private _generateSpawn: ChildProcessWithoutNullStreams | ChildProcessByStdio<null, Readable, Readable> | undefined;
 
     private projPath: string | undefined;
 
@@ -69,8 +70,14 @@ export class Serverpod implements ServerpodInterface {
             const serverOptions: ServerOptions = {
                 command: Constants.serverpodApp,
                 args: ['language-server', '--no-development-print'],
-                options: {},
-                transport: TransportKind.stdio
+                options: {
+                    cwd: this._utils.serverPath,
+                    detached: false,
+                    env: process.env,
+                    encoding: 'utf8',
+                    shell: true,
+                },
+                transport: TransportKind.stdio,
             };
 
             const clientOptions: LanguageClientOptions = {
@@ -78,12 +85,22 @@ export class Serverpod implements ServerpodInterface {
                 documentSelector: [
                     { scheme: 'file', language: 'yaml', pattern: '**/protocol/**/*.yaml' },
                     { scheme: 'file', pattern: '**/*.sp.yaml' },
-                    {
-                        scheme: 'file',
-                        language: 'dart',
-                        pattern: '**/lib/**/*.dart',
-                    }
                 ],
+                synchronize: {
+                    fileEvents: vscode.workspace.createFileSystemWatcher('**/*.sp.yaml'),
+                    configurationSection: 'serverpod',
+                },
+                initializationOptions: {
+                    serverPath: this._utils.serverPath,
+                },
+                connectionOptions: {
+                    maxRestartCount: 5,
+                },
+                outputChannelName: Constants.lspchannel.name,
+                outputChannel: Constants.lspchannel,
+                stdioEncoding: 'utf8',
+                workspaceFolder: this._utils.projectPath,
+                traceOutputChannel: Constants.lspTracechannel,
             };
 
             this.client = new LanguageClient(
@@ -97,7 +114,36 @@ export class Serverpod implements ServerpodInterface {
                 await this.client.start();
             }
         } catch (error) {
-            this.logger.error('startLSP', error);
+            vscode.window.showErrorMessage('Failed to start Serverpod LSP. Try again or restart VSCode', 'Run Back-up', 'Restart VS Code').then(async (value) => {
+                console.error(error);
+                if (value === 'Restart VS Code') {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }
+                else if (value === 'Run Back-up') {
+                    var process = spawn(Constants.serverpodApp, ['language-server'], { cwd: this._utils.serverPath, detached: false });
+                    process.stdout?.on('data', (data) => {
+                        this.logger.info('startLSP', data.toString());
+                        var _data = data.toString();
+                        _data = _data.replace(/\x1b\[\d+m/g, '');
+                        this._channel?.appendLine(data.toString());
+                    });
+                    process.stderr?.on('data', (data) => {
+                        this.logger.error('startLSP', data.toString());
+                        var _data = data.toString();
+                        _data = _data.replace(/\x1b\[\d+m/g, '');
+                        this._channel?.appendLine(data.toString());
+                    });
+                    process.on('exit', (_, __) => {
+                        this.logger.info('startLSP', 'Serverpod LSP exited');
+                        this._channel?.appendLine('Serverpod LSP exited');
+                    });
+                    process.on('close', (code) => {
+                        this.logger.info('startLSP', `Serverpod LSP exited with code ${code}`);
+                        this._channel?.appendLine(`Serverpod LSP exited with code ${code}`);
+                    });
+                }
+            });
+            this.logger.error('startLSP', `💔 ${error}`);
         }
     }
 
@@ -125,7 +171,7 @@ export class Serverpod implements ServerpodInterface {
             await vscode.window.showErrorMessage('Already generating....');
             return;
         }
-        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath, detached: false });
+        this._generateSpawn = spawn(Constants.serverpodApp, generateServerpodCodeArgs, { cwd: this._utils.serverPath, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
         _generateSpawn = this._generateSpawn;
         if (!this._channel) {
             this._channel = Constants.channel;
@@ -140,17 +186,26 @@ export class Serverpod implements ServerpodInterface {
             progress.report({ message: "Generating Serverpod API code..." });
             if (this._generateSpawn) {
                 this._generateSpawn.stdout?.on('data', (data) => {
+                    this.logger.info('generateServerpodCode', data.toString());
+                    var _data = data.toString();
+                    _data = _data.replace(/\x1b\[\d+m/g, '');
                     this._channel?.appendLine(data.toString());
                 });
                 this._generateSpawn.stderr?.on('data', (data) => {
-                    this._channel?.appendLine(data.toString());
+                    this.logger.error('generateServerpodCode', data.toString());
+                    var _data = data.toString();
+                    _data = _data.replace(/\x1b\[\d+m/g, '');
+                    this._channel?.appendLine(_data.toString());
                 });
                 this._generateSpawn.on('exit', (_, __) => {
+                    this.logger.info('generateServerpodCode', 'Serverpod code generation exited');
                     this._channel?.appendLine(`Serverpod code generation exited`);
                 });
                 this._generateSpawn.on('close', (code) => {
                     this._generateSpawn = undefined;
                     _generateSpawn = undefined;
+                    this._channel?.appendLine(`Closing Serverpod code generation with code ${code}`);
+                    this.logger.info('generateServerpodCode', `Serverpod code generation exited with code ${code}`);
                 });
             }
         });

@@ -22,9 +22,9 @@ export class Serverpod implements ServerpodInterface {
     private context: vscode.ExtensionContext;
 
     /**
-     * Private LanguageClient
+     * Public LanguageClient
      * */
-    private client: LanguageClient | undefined;
+    public client: LanguageClient | undefined;
 
 
     private logger: ExtLogger = new ExtLogger(LogCategory.serverpod);
@@ -69,7 +69,7 @@ export class Serverpod implements ServerpodInterface {
             this.logger.info('startLSP', '🟢 Starting Serverpod LSP');
             const serverOptions: ServerOptions = {
                 command: Constants.serverpodApp,
-                args: ['language-server', '--no-development-print'],
+                args: ['language-server', '--quiet'],
                 options: {
                     cwd: this._utils.serverPath,
                     detached: false,
@@ -600,7 +600,7 @@ export class Serverpod implements ServerpodInterface {
         /**
          * Start the serverpod LSP
          * */
-        await this.startLSP();
+        // await this.startLSP();
     }
 
     /**

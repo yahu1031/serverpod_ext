@@ -43,5 +43,6 @@ export async function deactivate(context: vscode.ExtensionContext): Promise<void
 			subscription.dispose();
 		});
 	}
+	_serverpod.client?.stop();
 	logger.info('deactivate', '💀 Your extension \'serverpod\' is now deactivated!');
 }
